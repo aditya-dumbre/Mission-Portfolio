@@ -11,6 +11,7 @@ const SECTOR_LOGS = [
   "> Skill indexes mapped to visual canvas.",
   "> Projects compilation logs compiled.",
   "> Digital signatures verified successfully.",
+  "> Extra-curricular logs synchronized.",
   "> Communication channels initialized."
 ];
 
@@ -153,7 +154,7 @@ const synth = new SereneSynth();
 // CAROUSEL & EXHIBITION STATE
 // ==========================================
 let activeIndex = 0;
-const totalCards = 6;
+const totalCards = 7;
 let isAnimating = false;
 let scrollAccumulator = 0;
 const scrollThreshold = 40; // Pixels for wheel/touchpad trigger
@@ -358,22 +359,48 @@ function createExhibitionModels() {
   modelContainer.add(model4);
   models.push(model4);
 
-  // --- MODEL 5: CONTACT (Gyro Rings) ---
+  // --- MODEL 5: EXTRA-CURRICULAR (Floating Helix Spiral & Research Core) ---
   const model5 = new THREE.Group();
-  const core5 = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 16), goldMat);
+  const spiralGroup = new THREE.Group();
+  const spiralCount = 40;
+  for (let i = 0; i < spiralCount; i++) {
+    const t = i / spiralCount;
+    const angle = t * Math.PI * 6; // 3 full turns
+    const y = (t - 0.5) * 3; // spread vertically
+    const radius = 1.3 - Math.abs(t - 0.5) * 0.4; // tapered spiral
+    
+    const nodeGeo = new THREE.SphereGeometry(0.12, 8, 8);
+    const nodeMat = i % 2 === 0 ? coralMat : sageMat;
+    const node = new THREE.Mesh(nodeGeo, nodeMat);
+    node.position.set(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
+    spiralGroup.add(node);
+  }
+  model5.add(spiralGroup);
+  
+  // Center research crystal (for deepfake paper presentation)
+  const core5 = new THREE.Mesh(new THREE.DodecahedronGeometry(0.7, 0), goldMat);
   model5.add(core5);
+  model5.userData = { spiral: spiralGroup, core: core5 };
+  
+  modelContainer.add(model5);
+  models.push(model5);
+
+  // --- MODEL 6: CONTACT (Gyro Rings) ---
+  const model6 = new THREE.Group();
+  const core6 = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 16), goldMat);
+  model6.add(core6);
   
   const gyro1 = new THREE.Mesh(new THREE.TorusGeometry(1.8, 0.12, 8, 48), amberMat);
   const gyro2 = new THREE.Mesh(new THREE.TorusGeometry(2.3, 0.08, 8, 48), coralMat);
   const gyro3 = new THREE.Mesh(new THREE.TorusGeometry(2.8, 0.06, 8, 48), ivoryMat);
   
-  model5.add(gyro1);
-  model5.add(gyro2);
-  model5.add(gyro3);
-  model5.userData = { gyros: [gyro1, gyro2, gyro3] };
+  model6.add(gyro1);
+  model6.add(gyro2);
+  model6.add(gyro3);
+  model6.userData = { gyros: [gyro1, gyro2, gyro3] };
   
-  modelContainer.add(model5);
-  models.push(model5);
+  modelContainer.add(model6);
+  models.push(model6);
 
   // Initialize scale and position (only active index visible)
   models.forEach((model, index) => {
@@ -701,7 +728,7 @@ function setupCardInteractiveActions() {
     btn.innerHTML = 'BEAMING HARMONIC FREQUENCIES...';
     
     // Spin gyro rings rapidly
-    const gyros = models[5].userData.gyros;
+    const gyros = models[6].userData.gyros;
     gsap.to(gyros[0].rotation, { x: Math.PI * 6, duration: 1.5 });
     gsap.to(gyros[1].rotation, { y: Math.PI * 6, duration: 1.5 });
     gsap.to(gyros[2].rotation, { z: Math.PI * 6, duration: 1.5 });
@@ -775,7 +802,11 @@ function animate() {
     models[4].children[1].rotation.x += 0.006; // Ring
   }
   if (models[5]) {
-    const gyros = models[5].userData.gyros;
+    models[5].userData.spiral.rotation.y += 0.01;
+    models[5].userData.core.rotation.y -= 0.005;
+  }
+  if (models[6]) {
+    const gyros = models[6].userData.gyros;
     gyros[0].rotation.x += 0.008;
     gyros[1].rotation.y += 0.006;
     gyros[2].rotation.z += 0.004;
