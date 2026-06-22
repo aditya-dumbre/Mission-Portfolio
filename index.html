@@ -4,282 +4,316 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Aditya Dumbre | 3D Space Portfolio</title>
-    <!-- Main Style Sheet -->
-    <link rel="stylesheet" href="/src/style.css" />
-    <!-- Google Fonts for High-Tech / Sci-Fi Aesthetic -->
+    <title>Aditya Dumbre | Serene 3D Portfolio</title>
+    <!-- Google Fonts for Soothing & Clean Aesthetic -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@400;600;800;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
   </head>
   <body>
     <!-- App Container -->
     <div id="app">
-      <!-- 3D Canvas -->
+      <!-- 3D WebGL Background Canvas -->
       <canvas id="bg-canvas"></canvas>
 
-      <!-- STARSHIP HUD OVERLAY -->
-      <div id="hud">
-        <!-- Top Navigation / Autopilot Menu -->
-        <header class="hud-header">
-          <div class="hud-brand">
-            <span class="hud-title">ADITYA DUMBRE</span>
-            <span class="hud-subtitle">NAV-SYSTEMS V1.0</span>
-          </div>
-          <div class="hud-autopilot">
-            <span class="hud-label">AUTOPILOT:</span>
-            <div class="nav-buttons">
-              <button class="nav-btn" data-station="home">CORE HUB</button>
-              <button class="nav-btn" data-station="education">EDUCATION</button>
-              <button class="nav-btn" data-station="skills">SKILLS</button>
-              <button class="nav-btn" data-station="projects">PROJECTS</button>
-              <button class="nav-btn" data-station="certifications">CERTIFICATIONS</button>
-              <button class="nav-btn" data-station="contact">CONTACT</button>
-            </div>
-          </div>
-          <div class="hud-controls-meta">
-            <button id="sound-toggle" class="hud-icon-btn" title="Toggle Sound">
-              <span class="sound-icon">🔊</span>
-            </button>
-            <button id="help-btn" class="hud-icon-btn" title="Show Controls">
-              <span>❓</span>
-            </button>
-          </div>
-        </header>
-
-        <!-- Left Widget: Spacecraft status -->
-        <div class="hud-left">
-          <div class="hud-widget glass-panel">
-            <div class="widget-title">SYSTEM STATUS</div>
-            <div class="status-row">
-              <span>SHIELDS:</span>
-              <div class="bar-container"><div id="shield-bar" class="bar glow-cyan" style="width: 100%"></div></div>
-              <span id="shield-txt">100%</span>
-            </div>
-            <div class="status-row">
-              <span>THRUST:</span>
-              <div class="bar-container"><div id="thrust-bar" class="bar glow-violet" style="width: 0%"></div></div>
-              <span id="thrust-txt">0%</span>
-            </div>
-            <div class="status-row">
-              <span>VELOCITY:</span>
-              <span id="velocity-txt" class="monotext glow-green">0 km/s</span>
-            </div>
-            <div class="status-row">
-              <span>WEAPONS:</span>
-              <span class="glow-cyan monotext">LASER CANNON (READY)</span>
-            </div>
-          </div>
-
-          <div class="hud-widget glass-panel" style="margin-top: 15px;">
-            <div class="widget-title">MISSION STATS</div>
-            <div class="status-row">
-              <span>RECRUITER SCORE:</span>
-              <span id="score-txt" class="monotext glow-gold">0000</span>
-            </div>
-            <div class="status-row">
-              <span>PILOT LEVEL:</span>
-              <span id="level-txt" class="monotext glow-magenta">RECRUIT LEVEL 1</span>
-            </div>
-            <div class="status-row">
-              <span>CRYSTALS DESTROYED:</span>
-              <span id="crystals-txt" class="monotext glow-cyan">0</span>
-            </div>
-          </div>
+      <!-- Minimalist Clean Header -->
+      <header class="portfolio-header">
+        <div class="header-brand">
+          <span class="brand-title">ADITYA DUMBRE</span>
+          <span class="brand-subtitle">EXHIBITION DECK</span>
         </div>
+        <nav class="header-nav">
+          <div class="nav-links">
+            <button class="nav-link-btn active" data-index="0">CORE</button>
+            <button class="nav-link-btn" data-index="1">EDUCATION</button>
+            <button class="nav-link-btn" data-index="2">SKILLS</button>
+            <button class="nav-link-btn" data-index="3">PROJECTS</button>
+            <button class="nav-link-btn" data-index="4">CERTIFICATIONS</button>
+            <button class="nav-link-btn" data-index="5">CONTACT</button>
+          </div>
+        </nav>
+        <div class="header-actions">
+          <button id="sound-toggle" class="action-icon-btn" title="Toggle Music">
+            <span class="sound-icon">🔊</span>
+          </button>
+        </div>
+      </header>
 
-        <!-- Right Widget: Radar/Map and Achievements -->
-        <div class="hud-right">
-          <div class="hud-widget glass-panel radar-widget">
-            <div class="widget-title">SECTOR RADAR</div>
-            <div class="radar-container">
-              <div class="radar-sweep"></div>
-              <div class="radar-center"></div>
-              <div id="radar-dots">
-                <!-- Javascript will inject blips representing stations relative to ship -->
+      <!-- Carousel Navigation Arrows (Side controls) -->
+      <button id="prev-arrow" class="nav-arrow left" aria-label="Previous Section">&larr;</button>
+      <button id="next-arrow" class="nav-arrow right" aria-label="Next Section">&rarr;</button>
+
+      <!-- Central Exhibition Cards Container -->
+      <main class="exhibition-container">
+        <!-- CARD 0: CORE HUB -->
+        <section class="exhibition-card active" id="card-0">
+          <div class="card-content">
+            <span class="card-tag">[SECTOR 00]</span>
+            <h2 class="card-title">Core Nebula</h2>
+            <div class="card-divider"></div>
+            
+            <div class="resume-section">
+              <h3 class="name-header">Aditya Rohidas Dumbre</h3>
+              <div class="contact-line">adityad.9051@gmail.com | Mumbai, Maharashtra</div>
+              
+              <div class="links-row">
+                <a href="https://linkedin.com/in/adityad15" target="_blank" class="accent-link">LinkedIn 🔗</a>
+                <a href="https://github.com/aditya-dumbre" target="_blank" class="accent-link">GitHub 🔗</a>
               </div>
-            </div>
-            <div class="radar-legend">
-              <span class="legend-item"><span class="dot yellow"></span>EDU</span>
-              <span class="legend-item"><span class="dot violet"></span>SKL</span>
-              <span class="legend-item"><span class="dot orange"></span>PRJ</span>
-              <span class="legend-item"><span class="dot cyan"></span>CRT</span>
-              <span class="legend-item"><span class="dot green"></span>CON</span>
+              
+              <div class="block-desc" style="margin-top: 15px;">
+                I am a Computer Engineering student and developer passionate about building scalable backend architectures, distributed enterprise applications, and AI/ML integrations. Experienced in Java, Kotlin, Python, and SQL, with a track record of implementing robust, containerized and synchronized services.
+              </div>
+              
+              <div class="details-list" style="margin-top: 15px;">
+                <strong>Primary Interests:</strong> Distributed Systems, Scalable Enterprise Software, AI/ML Integration, Open Source Contribution, Game Development.
+              </div>
             </div>
           </div>
+        </section>
 
-          <div class="hud-widget glass-panel" style="margin-top: 15px;">
-            <div class="widget-title">ACHIEVEMENTS</div>
-            <div id="achievements-list" class="achievements-feed">
-              <div class="achievement-item locked" id="ach-explorer">
-                <span class="ach-icon">🛸</span>
-                <div class="ach-details">
-                  <div class="ach-name">Space Explorer</div>
-                  <div class="ach-desc">Visit all 5 sectors.</div>
-                </div>
+        <!-- CARD 1: EDUCATION -->
+        <section class="exhibition-card" id="card-1">
+          <div class="card-content">
+            <span class="card-tag">[SECTOR 01]</span>
+            <h2 class="card-title">Education</h2>
+            <div class="card-divider"></div>
+            
+            <div class="resume-section scrollable">
+              <div class="resume-block">
+                <h4 class="block-title">Bachelor of Engineering, Computer Engineering</h4>
+                <div class="block-subtitle">Savitribai Phule Pune University | TSSM's BSCOER, Narhe, Pune</div>
+                <div class="block-meta">2022 – 2025 | CGPA Equivalent: 73.2%</div>
               </div>
-              <div class="achievement-item locked" id="ach-scholar">
-                <span class="ach-icon">🎓</span>
-                <div class="ach-details">
-                  <div class="ach-name">Agile Scholar</div>
-                  <div class="ach-desc">Dock at Education and pass the quiz.</div>
-                </div>
+              
+              <div class="resume-block">
+                <h4 class="block-title">Diploma in Computer Engineering</h4>
+                <div class="block-subtitle">MSBTE | Narhe, Pune</div>
+                <div class="block-meta">2019 – 2022 | Academic Score: 89.89%</div>
               </div>
-              <div class="achievement-item locked" id="ach-expert">
-                <span class="ach-icon">⚡</span>
-                <div class="ach-details">
-                  <div class="ach-name">Skill Collector</div>
-                  <div class="ach-desc">Shoot down 5 skills to learn them.</div>
-                </div>
-              </div>
-              <div class="achievement-item locked" id="ach-creator">
-                <span class="ach-icon">🛠️</span>
-                <div class="ach-details">
-                  <div class="ach-name">Project Lead</div>
-                  <div class="ach-desc">Inspect all projects at Projects Nexus.</div>
-                </div>
-              </div>
-              <div class="achievement-item locked" id="ach-recruiter">
-                <span class="ach-icon">🏆</span>
-                <div class="ach-details">
-                  <div class="ach-name">Certified Recruiter</div>
-                  <div class="ach-desc">Get a score of 1000+ or initiate contact.</div>
+
+              <div class="resume-block">
+                <h4 class="block-title">Trivia Decrypter</h4>
+                <p class="block-desc" style="margin-bottom: 10px;">Select the correct answer below to test your knowledge of my academic coursework:</p>
+                <div id="edu-quiz-box">
+                  <!-- JS will inject quiz question and choices here -->
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        <!-- Target Finder Lock-on indicator -->
-        <div id="target-lock" class="target-lock">
-          <div class="lock-bracket top-left"></div>
-          <div class="lock-bracket top-right"></div>
-          <div class="lock-bracket bottom-left"></div>
-          <div class="lock-bracket bottom-right"></div>
-          <div class="lock-info">
-            <div id="lock-name" class="glow-cyan">TARGET: NONE</div>
-            <div id="lock-dist">RANGE: 0.00m</div>
-            <div id="lock-action" class="glow-green pulse-text">PRESS [E] TO DOCK</div>
-          </div>
-        </div>
-
-        <!-- BOTTOM CONTROLS HINT -->
-        <div class="hud-bottom-tip">
-          <span class="glow-cyan">W/A/S/D or ARROWS</span> to Fly | <span class="glow-cyan">MOUSE</span> to Aim | <span class="glow-cyan">SPACEBAR / CLICK</span> to Shoot Lasers | <span class="glow-cyan">SHIFT</span> to Boost
-        </div>
-      </div>
-
-      <!-- DOCKED STATION DASHBOARD VIEW (Initially Hidden) -->
-      <div id="dock-dashboard" class="dashboard-overlay hidden">
-        <div class="dashboard-window glass-panel animate-slide-up">
-          <header class="dash-header">
-            <div class="dash-title-section">
-              <span id="dash-sector-id" class="monotext glow-magenta">[SECTOR 01]</span>
-              <h2 id="dash-title" class="glow-cyan">EDUCATION STATION</h2>
-            </div>
-            <button id="dash-close-btn" class="dash-close">&times;</button>
-          </header>
-          
-          <div class="dash-body">
-            <!-- Left side: Detailed Text/Resume info -->
-            <div class="dash-info-panel scrollable-panel">
-              <div id="dash-content-target">
-                <!-- Dynamically populated from JS -->
+        <!-- CARD 2: SKILLS -->
+        <section class="exhibition-card" id="card-2">
+          <div class="card-content">
+            <span class="card-tag">[SECTOR 02]</span>
+            <h2 class="card-title">Technical Skills</h2>
+            <div class="card-divider"></div>
+            
+            <div class="resume-section scrollable">
+              <p class="block-desc" style="margin-bottom: 12px;">Hover over any category to highlight technical parameters, or rotate the 3D grid with your mouse:</p>
+              
+              <div class="skills-category" id="skills-cat-langs">
+                <h5>Languages</h5>
+                <div class="skills-grid">
+                  <span class="skill-pill active" data-name="Java">Java</span>
+                  <span class="skill-pill active" data-name="Python">Python</span>
+                  <span class="skill-pill active" data-name="SQL">SQL</span>
+                  <span class="skill-pill active" data-name="Kotlin">Kotlin</span>
+                </div>
+              </div>
+              
+              <div class="skills-category" id="skills-cat-frames" style="margin-top: 12px;">
+                <h5>Frameworks & Libraries</h5>
+                <div class="skills-grid">
+                  <span class="skill-pill" data-name="Flask">Flask</span>
+                  <span class="skill-pill" data-name="TensorFlow">TensorFlow</span>
+                  <span class="skill-pill" data-name="Keras">Keras</span>
+                  <span class="skill-pill" data-name="scikit-learn">scikit-learn</span>
+                  <span class="skill-pill" data-name="Pandas">Pandas</span>
+                  <span class="skill-pill" data-name="NumPy">NumPy</span>
+                  <span class="skill-pill" data-name="Spring Boot">Spring Boot</span>
+                </div>
+              </div>
+              
+              <div class="skills-category" id="skills-cat-tools" style="margin-top: 12px;">
+                <h5>Tools & Databases</h5>
+                <div class="skills-grid">
+                  <span class="skill-pill" data-name="PostgreSQL">PostgreSQL</span>
+                  <span class="skill-pill" data-name="MySQL">MySQL</span>
+                  <span class="skill-pill" data-name="Git">Git</span>
+                  <span class="skill-pill" data-name="GitHub">GitHub</span>
+                  <span class="skill-pill" data-name="Android Studio">Android Studio</span>
+                  <span class="skill-pill" data-name="MinIO">MinIO</span>
+                </div>
               </div>
             </div>
+          </div>
+        </section>
 
-            <!-- Right side: Section-specific mini-game / interaction -->
-            <div class="dash-interactive-panel">
-              <div class="widget-title">STATION INTERACTIVE CONSOLE</div>
-              <div id="dash-game-target">
-                <!-- Dynamically populated mini-game from JS -->
+        <!-- CARD 3: PROJECTS -->
+        <section class="exhibition-card" id="card-3">
+          <div class="card-content">
+            <span class="card-tag">[SECTOR 03]</span>
+            <h2 class="card-title">Projects Nexus</h2>
+            <div class="card-divider"></div>
+            
+            <div class="resume-section scrollable">
+              <!-- Project 1 -->
+              <div class="resume-block">
+                <h4 class="block-title">Prushtha – Synchronized Book Reading App</h4>
+                <div class="block-subtitle">Kotlin, Spring Boot, PostgreSQL, MinIO, KMP</div>
+                <p class="block-desc">
+                  • Architected a cross-platform Kotlin Multiplatform (KMP) app with Android/Desktop targets using Compose UI and SQLDelight local storage.<br>
+                  • Built a Spring Boot backend with PostgreSQL for user databases and MinIO for distributed object storage.<br>
+                  • Defined full Software Requirements Specification (SRS) and delivered a 27-file production-ready codebase.
+                </p>
+                <div class="project-actions">
+                  <a href="https://github.com/aditya-dumbre/Prushtha" target="_blank" class="accent-link">GitHub Crypt</a>
+                  <button class="project-test-btn" id="run-prushtha-btn">Verify Compile Build</button>
+                </div>
+              </div>
+              
+              <hr class="card-separator">
+
+              <!-- Project 2 -->
+              <div class="resume-block">
+                <h4 class="block-title">Machinery Failure Analysis Using ML</h4>
+                <div class="block-subtitle">Python, scikit-learn, Flask, SMOTE</div>
+                <p class="block-desc">
+                  • Built a predictive maintenance system on the AI4I dataset to classify industrial equipment failures, reducing unplanned downtime.<br>
+                  • Handled class imbalance using SMOTE oversampling; achieved high precision across multiple failure modes.<br>
+                  • Developed a Flask interface supporting model training pipelines and prediction API endpoints.
+                </p>
+                <div class="project-actions">
+                  <a href="https://github.com/aditya-dumbre/machinery-failure-analysis-using-ml" target="_blank" class="accent-link">GitHub Crypt</a>
+                  <button class="project-test-btn" id="run-ml-btn">Trigger Model Fit</button>
+                </div>
+              </div>
+
+              <hr class="card-separator">
+
+              <!-- Project 3 -->
+              <div class="resume-block">
+                <h4 class="block-title">SpeakX Pro</h4>
+                <div class="block-subtitle">Python, NLP, REST API, SQL (In Progress)</div>
+                <p class="block-desc">
+                  • Engineering a backend service integrating NLP pipelines for speech-to-text and language processing.<br>
+                  • Designing RESTful API endpoints for low-latency concurrent requests across multiple clients.
+                </p>
+                <div class="project-actions">
+                  <a href="https://github.com/aditya-dumbre/SpeakX-Pro-main" target="_blank" class="accent-link">GitHub Crypt</a>
+                  <button class="project-test-btn" id="run-speakx-btn">Start Speech Stream</button>
+                </div>
               </div>
             </div>
           </div>
-          
-          <footer class="dash-footer">
-            <div class="system-logs">
-              <span class="monotext glow-green">> Status: Connection Established. Decrypted files available.</span>
-            </div>
-            <button id="dash-action-btn" class="dash-action-btn glow-btn">UNDOCK & RETURN TO FLIGHT</button>
-          </footer>
-        </div>
-      </div>
+        </section>
 
-      <!-- ONBOARDING / LOADING OVERLAY -->
+        <!-- CARD 4: CERTIFICATIONS -->
+        <section class="exhibition-card" id="card-4">
+          <div class="card-content">
+            <span class="card-tag">[SECTOR 04]</span>
+            <h2 class="card-title">Certifications</h2>
+            <div class="card-divider"></div>
+            
+            <div class="resume-section">
+              <div class="resume-block">
+                <h4 class="block-title">Python 3.4.3 Training</h4>
+                <div class="block-subtitle">IIT Bombay (Spoken Tutorial Project)</div>
+                <p class="block-desc">Verified certification on core programming, functional modules, and libraries.</p>
+              </div>
+              
+              <div class="resume-block" style="margin-top: 15px;">
+                <h4 class="block-title">Data Analytics Job Simulation</h4>
+                <div class="block-subtitle">Deloitte (via Forage)</div>
+                <p class="block-desc">Completed real-world business analysis simulations and visual dashboard drafting.</p>
+              </div>
+
+              <div class="resume-block" style="margin-top: 15px;">
+                <h4 class="block-title">Oracle SQL Certification</h4>
+                <div class="block-subtitle">Great Learning Academy</div>
+                <p class="block-desc">Validated database management, multi-table joins, subqueries, and optimizations.</p>
+              </div>
+
+              <div class="cert-scanner-box" style="margin-top: 20px;">
+                <button class="project-test-btn" id="scan-certs-btn" style="width: 100%;">Sweep Digital Signature Authenticator</button>
+                <div id="scan-certs-status" style="margin-top: 8px; font-family: var(--font-code); font-size: 11px;"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- CARD 5: CONTACT -->
+        <section class="exhibition-card" id="card-5">
+          <div class="card-content">
+            <span class="card-tag">[SECTOR 05]</span>
+            <h2 class="card-title">Contact</h2>
+            <div class="card-divider"></div>
+            
+            <div class="resume-section">
+              <ul class="contact-bullets">
+                <li><strong>Direct Signal:</strong> adityad.9051@gmail.com</li>
+                <li><strong>Location:</strong> Mumbai, Maharashtra, India</li>
+                <li><strong>Languages:</strong> English, Marathi, Hindi</li>
+              </ul>
+              
+              <form class="contact-form" id="contact-transmission-form" onsubmit="return false;">
+                <div class="form-group">
+                  <label for="c-name">YOUR NAME</label>
+                  <input type="text" id="c-name" class="form-input" required placeholder="Jane Doe">
+                </div>
+                <div class="form-group">
+                  <label for="c-email">EMAIL ADDRESS</label>
+                  <input type="email" id="c-email" class="form-input" required placeholder="jane@example.com">
+                </div>
+                <div class="form-group">
+                  <label for="c-msg">MESSAGE</label>
+                  <textarea id="c-msg" class="form-input form-textarea" required placeholder="Let's build something beautiful..."></textarea>
+                </div>
+                <button type="submit" class="transmit-btn">TRANSMIT TRANSMISSION</button>
+              </form>
+              <div id="transmission-status" style="margin-top: 8px; font-size: 11.5px; font-weight: bold; color: var(--color-green);"></div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <!-- Bottom Status & Progression Indicators -->
+      <footer class="portfolio-footer">
+        <div class="footer-status">
+          <span class="monotext" id="status-log">> Connection active. Serene archives ready.</span>
+        </div>
+        <div class="dot-indicators">
+          <span class="dot-indicator active" data-index="0"></span>
+          <span class="dot-indicator" data-index="1"></span>
+          <span class="dot-indicator" data-index="2"></span>
+          <span class="dot-indicator" data-index="3"></span>
+          <span class="dot-indicator" data-index="4"></span>
+          <span class="dot-indicator" data-index="5"></span>
+        </div>
+      </footer>
+
+      <!-- Simple Soothing Onboarding Loader Overlay -->
       <div id="loading-screen" class="overlay-screen">
         <div class="loading-container glass-panel">
           <h1 class="glow-cyan">ADITYA DUMBRE</h1>
-          <div class="monotext glow-magenta" style="margin-bottom: 20px;">INTERACTIVE 3D SPACE ODYSSEY PORTFOLIO</div>
+          <div class="monotext glow-magenta" style="margin-bottom: 20px;">INTERACTIVE 3D EXHIBITION PORTFOLIO</div>
           
           <div class="loading-progress-box">
-            <div class="loading-text">BOOTING QUANTUM COMPUTER SYSTEM... <span id="loading-pct">0%</span></div>
+            <div class="loading-text">TUNING FREQUENCIES... <span id="loading-pct">0%</span></div>
             <div class="loading-bar-outer">
               <div id="loading-bar" class="loading-bar-inner glow-cyan" style="width: 0%"></div>
             </div>
           </div>
 
           <div id="onboarding-controls" class="onboarding-info hidden">
-            <h3>PILOT CONTROLS MANUAL:</h3>
-            <div class="controls-grid">
-              <div class="control-key">W / S</div>
-              <div>Pitch Up / Down (Fly Forward / Backward)</div>
-              <div class="control-key">A / D</div>
-              <div>Roll Left / Right (Steer Ship)</div>
-              <div class="control-key">MOUSE</div>
-              <div>Aim Crosshair / Direct Ship Nose</div>
-              <div class="control-key">SPACE / CLICK</div>
-              <div>Shoot Lasers (Shoot down skills & space debris!)</div>
-              <div class="control-key">SHIFT</div>
-              <div>Engine Boost / Hyperdrive Speed</div>
-              <div class="control-key">E</div>
-              <div>Dock at Planets / Stations when in close range</div>
-            </div>
-            <div class="recruit-pilot-notice">
-              <strong>Recruiter Mode:</strong> If you prefer standard clicking, you can use the <strong>Autopilot Menu</strong> at the top of the HUD to warp instantly to any section!
-            </div>
-            <button id="start-game-btn" class="start-btn glow-btn glow-magenta">ENGAGE ENGINES</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- IN-GAME CONTROLS HELP POPUP -->
-      <div id="help-modal" class="overlay-screen hidden">
-        <div class="help-content glass-panel animate-fade-in">
-          <div class="modal-header">
-            <h3>PILOT CONTROLS REFERENCE</h3>
-            <button id="help-close-btn" class="dash-close">&times;</button>
-          </div>
-          <div class="controls-grid">
-            <div class="control-key">W / S</div>
-            <div>Move Forward / Backward</div>
-            <div class="control-key">A / D</div>
-            <div>Steer Left / Right</div>
-            <div class="control-key">MOUSE</div>
-            <div>Steer Pitch / Roll and Aim</div>
-            <div class="control-key">SPACE / LEFT CLICK</div>
-            <div>Fire Laser Cannons</div>
-            <div class="control-key">SHIFT</div>
-            <div>Afterburners / Boost Speed</div>
-            <div class="control-key">E</div>
-            <div>Dock at Stations (when Range &lt; 25m)</div>
-            <div class="control-key">ESC / Q</div>
-            <div>Undock / Return to flight</div>
-          </div>
-          <div style="margin-top: 15px; font-size: 13px; opacity: 0.8; text-align: center;">
-            Enjoy the exploration! Shoot crystals to earn bonus points. Dock to inspect resume details and play mini-games.
-          </div>
-          <button id="help-ok-btn" class="start-btn glow-btn glow-cyan" style="margin-top: 15px; width: 100%;">RESUME MISSION</button>
-        </div>
-      </div>
-
-      <!-- CUSTOM ACHIEVEMENTS BANNER (glowing pop-up on top screen) -->
-      <div id="achievement-popup" class="ach-popup hidden">
-        <div class="ach-popup-content glass-panel glow-gold">
-          <span class="ach-popup-icon">🏆</span>
-          <div class="ach-popup-text">
-            <div class="ach-popup-title glow-gold">ACHIEVEMENT UNLOCKED!</div>
-            <div id="ach-popup-name" class="ach-popup-desc">Space Explorer</div>
+            <h3>EXHIBITION CONTROL DECK:</h3>
+            <p class="onboarding-desc">
+              Welcome. This space presents Aditya's resume in a soothing, 3D golden-hour studio. 
+              Drift through the sectors using the <strong>Quick Navigation Menu</strong> at the top, the <strong>Side Arrows</strong>, or by simply <strong>Scrolling</strong>.
+            </p>
+            <button id="start-game-btn" class="start-btn glow-btn glow-magenta">ENTER EXHIBITION</button>
           </div>
         </div>
       </div>
