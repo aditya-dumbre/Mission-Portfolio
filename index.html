@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aditya Dumbre | 3D Space Portfolio</title>
+    <!-- Main Style Sheet -->
+    <link rel="stylesheet" href="/src/style.css" />
+    <!-- Google Fonts for High-Tech / Sci-Fi Aesthetic -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@400;600;800;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <!-- App Container -->
+    <div id="app">
+      <!-- 3D Canvas -->
+      <canvas id="bg-canvas"></canvas>
+
+      <!-- STARSHIP HUD OVERLAY -->
+      <div id="hud">
+        <!-- Top Navigation / Autopilot Menu -->
+        <header class="hud-header">
+          <div class="hud-brand">
+            <span class="hud-title">ADITYA DUMBRE</span>
+            <span class="hud-subtitle">NAV-SYSTEMS V1.0</span>
+          </div>
+          <div class="hud-autopilot">
+            <span class="hud-label">AUTOPILOT:</span>
+            <div class="nav-buttons">
+              <button class="nav-btn" data-station="home">CORE HUB</button>
+              <button class="nav-btn" data-station="education">EDUCATION</button>
+              <button class="nav-btn" data-station="skills">SKILLS</button>
+              <button class="nav-btn" data-station="projects">PROJECTS</button>
+              <button class="nav-btn" data-station="certifications">CERTIFICATIONS</button>
+              <button class="nav-btn" data-station="contact">CONTACT</button>
+            </div>
+          </div>
+          <div class="hud-controls-meta">
+            <button id="sound-toggle" class="hud-icon-btn" title="Toggle Sound">
+              <span class="sound-icon">🔊</span>
+            </button>
+            <button id="help-btn" class="hud-icon-btn" title="Show Controls">
+              <span>❓</span>
+            </button>
+          </div>
+        </header>
+
+        <!-- Left Widget: Spacecraft status -->
+        <div class="hud-left">
+          <div class="hud-widget glass-panel">
+            <div class="widget-title">SYSTEM STATUS</div>
+            <div class="status-row">
+              <span>SHIELDS:</span>
+              <div class="bar-container"><div id="shield-bar" class="bar glow-cyan" style="width: 100%"></div></div>
+              <span id="shield-txt">100%</span>
+            </div>
+            <div class="status-row">
+              <span>THRUST:</span>
+              <div class="bar-container"><div id="thrust-bar" class="bar glow-violet" style="width: 0%"></div></div>
+              <span id="thrust-txt">0%</span>
+            </div>
+            <div class="status-row">
+              <span>VELOCITY:</span>
+              <span id="velocity-txt" class="monotext glow-green">0 km/s</span>
+            </div>
+            <div class="status-row">
+              <span>WEAPONS:</span>
+              <span class="glow-cyan monotext">LASER CANNON (READY)</span>
+            </div>
+          </div>
+
+          <div class="hud-widget glass-panel" style="margin-top: 15px;">
+            <div class="widget-title">MISSION STATS</div>
+            <div class="status-row">
+              <span>RECRUITER SCORE:</span>
+              <span id="score-txt" class="monotext glow-gold">0000</span>
+            </div>
+            <div class="status-row">
+              <span>PILOT LEVEL:</span>
+              <span id="level-txt" class="monotext glow-magenta">RECRUIT LEVEL 1</span>
+            </div>
+            <div class="status-row">
+              <span>CRYSTALS DESTROYED:</span>
+              <span id="crystals-txt" class="monotext glow-cyan">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Widget: Radar/Map and Achievements -->
+        <div class="hud-right">
+          <div class="hud-widget glass-panel radar-widget">
+            <div class="widget-title">SECTOR RADAR</div>
+            <div class="radar-container">
+              <div class="radar-sweep"></div>
+              <div class="radar-center"></div>
+              <div id="radar-dots">
+                <!-- Javascript will inject blips representing stations relative to ship -->
+              </div>
+            </div>
+            <div class="radar-legend">
+              <span class="legend-item"><span class="dot yellow"></span>EDU</span>
+              <span class="legend-item"><span class="dot violet"></span>SKL</span>
+              <span class="legend-item"><span class="dot orange"></span>PRJ</span>
+              <span class="legend-item"><span class="dot cyan"></span>CRT</span>
+              <span class="legend-item"><span class="dot green"></span>CON</span>
+            </div>
+          </div>
+
+          <div class="hud-widget glass-panel" style="margin-top: 15px;">
+            <div class="widget-title">ACHIEVEMENTS</div>
+            <div id="achievements-list" class="achievements-feed">
+              <div class="achievement-item locked" id="ach-explorer">
+                <span class="ach-icon">🛸</span>
+                <div class="ach-details">
+                  <div class="ach-name">Space Explorer</div>
+                  <div class="ach-desc">Visit all 5 sectors.</div>
+                </div>
+              </div>
+              <div class="achievement-item locked" id="ach-scholar">
+                <span class="ach-icon">🎓</span>
+                <div class="ach-details">
+                  <div class="ach-name">Agile Scholar</div>
+                  <div class="ach-desc">Dock at Education and pass the quiz.</div>
+                </div>
+              </div>
+              <div class="achievement-item locked" id="ach-expert">
+                <span class="ach-icon">⚡</span>
+                <div class="ach-details">
+                  <div class="ach-name">Skill Collector</div>
+                  <div class="ach-desc">Shoot down 5 skills to learn them.</div>
+                </div>
+              </div>
+              <div class="achievement-item locked" id="ach-creator">
+                <span class="ach-icon">🛠️</span>
+                <div class="ach-details">
+                  <div class="ach-name">Project Lead</div>
+                  <div class="ach-desc">Inspect all projects at Projects Nexus.</div>
+                </div>
+              </div>
+              <div class="achievement-item locked" id="ach-recruiter">
+                <span class="ach-icon">🏆</span>
+                <div class="ach-details">
+                  <div class="ach-name">Certified Recruiter</div>
+                  <div class="ach-desc">Get a score of 1000+ or initiate contact.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Target Finder Lock-on indicator -->
+        <div id="target-lock" class="target-lock">
+          <div class="lock-bracket top-left"></div>
+          <div class="lock-bracket top-right"></div>
+          <div class="lock-bracket bottom-left"></div>
+          <div class="lock-bracket bottom-right"></div>
+          <div class="lock-info">
+            <div id="lock-name" class="glow-cyan">TARGET: NONE</div>
+            <div id="lock-dist">RANGE: 0.00m</div>
+            <div id="lock-action" class="glow-green pulse-text">PRESS [E] TO DOCK</div>
+          </div>
+        </div>
+
+        <!-- BOTTOM CONTROLS HINT -->
+        <div class="hud-bottom-tip">
+          <span class="glow-cyan">W/A/S/D or ARROWS</span> to Fly | <span class="glow-cyan">MOUSE</span> to Aim | <span class="glow-cyan">SPACEBAR / CLICK</span> to Shoot Lasers | <span class="glow-cyan">SHIFT</span> to Boost
+        </div>
+      </div>
+
+      <!-- DOCKED STATION DASHBOARD VIEW (Initially Hidden) -->
+      <div id="dock-dashboard" class="dashboard-overlay hidden">
+        <div class="dashboard-window glass-panel animate-slide-up">
+          <header class="dash-header">
+            <div class="dash-title-section">
+              <span id="dash-sector-id" class="monotext glow-magenta">[SECTOR 01]</span>
+              <h2 id="dash-title" class="glow-cyan">EDUCATION STATION</h2>
+            </div>
+            <button id="dash-close-btn" class="dash-close">&times;</button>
+          </header>
+          
+          <div class="dash-body">
+            <!-- Left side: Detailed Text/Resume info -->
+            <div class="dash-info-panel scrollable-panel">
+              <div id="dash-content-target">
+                <!-- Dynamically populated from JS -->
+              </div>
+            </div>
+
+            <!-- Right side: Section-specific mini-game / interaction -->
+            <div class="dash-interactive-panel">
+              <div class="widget-title">STATION INTERACTIVE CONSOLE</div>
+              <div id="dash-game-target">
+                <!-- Dynamically populated mini-game from JS -->
+              </div>
+            </div>
+          </div>
+          
+          <footer class="dash-footer">
+            <div class="system-logs">
+              <span class="monotext glow-green">> Status: Connection Established. Decrypted files available.</span>
+            </div>
+            <button id="dash-action-btn" class="dash-action-btn glow-btn">UNDOCK & RETURN TO FLIGHT</button>
+          </footer>
+        </div>
+      </div>
+
+      <!-- ONBOARDING / LOADING OVERLAY -->
+      <div id="loading-screen" class="overlay-screen">
+        <div class="loading-container glass-panel">
+          <h1 class="glow-cyan">ADITYA DUMBRE</h1>
+          <div class="monotext glow-magenta" style="margin-bottom: 20px;">INTERACTIVE 3D SPACE ODYSSEY PORTFOLIO</div>
+          
+          <div class="loading-progress-box">
+            <div class="loading-text">BOOTING QUANTUM COMPUTER SYSTEM... <span id="loading-pct">0%</span></div>
+            <div class="loading-bar-outer">
+              <div id="loading-bar" class="loading-bar-inner glow-cyan" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <div id="onboarding-controls" class="onboarding-info hidden">
+            <h3>PILOT CONTROLS MANUAL:</h3>
+            <div class="controls-grid">
+              <div class="control-key">W / S</div>
+              <div>Pitch Up / Down (Fly Forward / Backward)</div>
+              <div class="control-key">A / D</div>
+              <div>Roll Left / Right (Steer Ship)</div>
+              <div class="control-key">MOUSE</div>
+              <div>Aim Crosshair / Direct Ship Nose</div>
+              <div class="control-key">SPACE / CLICK</div>
+              <div>Shoot Lasers (Shoot down skills & space debris!)</div>
+              <div class="control-key">SHIFT</div>
+              <div>Engine Boost / Hyperdrive Speed</div>
+              <div class="control-key">E</div>
+              <div>Dock at Planets / Stations when in close range</div>
+            </div>
+            <div class="recruit-pilot-notice">
+              <strong>Recruiter Mode:</strong> If you prefer standard clicking, you can use the <strong>Autopilot Menu</strong> at the top of the HUD to warp instantly to any section!
+            </div>
+            <button id="start-game-btn" class="start-btn glow-btn glow-magenta">ENGAGE ENGINES</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- IN-GAME CONTROLS HELP POPUP -->
+      <div id="help-modal" class="overlay-screen hidden">
+        <div class="help-content glass-panel animate-fade-in">
+          <div class="modal-header">
+            <h3>PILOT CONTROLS REFERENCE</h3>
+            <button id="help-close-btn" class="dash-close">&times;</button>
+          </div>
+          <div class="controls-grid">
+            <div class="control-key">W / S</div>
+            <div>Move Forward / Backward</div>
+            <div class="control-key">A / D</div>
+            <div>Steer Left / Right</div>
+            <div class="control-key">MOUSE</div>
+            <div>Steer Pitch / Roll and Aim</div>
+            <div class="control-key">SPACE / LEFT CLICK</div>
+            <div>Fire Laser Cannons</div>
+            <div class="control-key">SHIFT</div>
+            <div>Afterburners / Boost Speed</div>
+            <div class="control-key">E</div>
+            <div>Dock at Stations (when Range &lt; 25m)</div>
+            <div class="control-key">ESC / Q</div>
+            <div>Undock / Return to flight</div>
+          </div>
+          <div style="margin-top: 15px; font-size: 13px; opacity: 0.8; text-align: center;">
+            Enjoy the exploration! Shoot crystals to earn bonus points. Dock to inspect resume details and play mini-games.
+          </div>
+          <button id="help-ok-btn" class="start-btn glow-btn glow-cyan" style="margin-top: 15px; width: 100%;">RESUME MISSION</button>
+        </div>
+      </div>
+
+      <!-- CUSTOM ACHIEVEMENTS BANNER (glowing pop-up on top screen) -->
+      <div id="achievement-popup" class="ach-popup hidden">
+        <div class="ach-popup-content glass-panel glow-gold">
+          <span class="ach-popup-icon">🏆</span>
+          <div class="ach-popup-text">
+            <div class="ach-popup-title glow-gold">ACHIEVEMENT UNLOCKED!</div>
+            <div id="ach-popup-name" class="ach-popup-desc">Space Explorer</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Script loading -->
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
