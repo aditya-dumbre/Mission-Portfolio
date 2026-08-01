@@ -1,292 +1,373 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Aditya Dumbre | Serene 3D Portfolio</title>
-    <!-- Google Fonts for Soothing & Clean Aesthetic -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-  </head>
-  <body>
-    <!-- App Container -->
-    <div id="app">
-      <!-- 3D WebGL Background Canvas -->
-      <canvas id="bg-canvas"></canvas>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Aditya Dumbre — AI/ML Portfolio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;800&family=Zen+Kaku+Gothic+New:wght@300;500;900&family=Cinzel:wght@400;700;900&family=Space+Grotesk:wght@300;400;500&display=swap" rel="stylesheet">
+</head>
+<body>
 
-      <!-- Minimalist Clean Header -->
-      <header class="portfolio-header">
-        <div class="header-brand">
-          <span class="brand-title">ADITYA DUMBRE</span>
-          <span class="brand-subtitle">EXHIBITION DECK</span>
+<!-- ══════════ PRELOADER ══════════ -->
+<div class="loader" id="loader">
+  <div class="loader__inner">
+    <div class="loader__glyph">SHARINGAN</div>
+    <div class="loader__bar"><span id="loaderFill"></span></div>
+    <div class="loader__meta">
+      <span>INITIALIZING</span>
+      <span id="loaderPct">00</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ AMBIENT LAYERS ══════════ -->
+<div class="grain" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+
+<!-- ══════════ AMATERASU — BLACK FLAME HEM ══════════ -->
+<div class="amaterasu-bed" aria-hidden="true"></div>
+<canvas class="amaterasu" id="amaterasuCanvas" aria-hidden="true"></canvas>
+
+<!-- ══════════ STORM ══════════ -->
+<div class="storm" aria-hidden="true">
+  <div class="storm__flash" id="stormFlash"></div>
+  <svg class="storm__bolt" id="stormBolt" viewBox="0 0 1000 1000" preserveAspectRatio="none">
+    <path id="boltPath" d="" fill="none" stroke="#fff" stroke-width="2"
+          stroke-linejoin="round" stroke-linecap="round"/>
+    <path id="boltGlow" d="" fill="none" stroke="#9fd8ff" stroke-width="9"
+          stroke-linejoin="round" stroke-linecap="round" opacity=".45"/>
+  </svg>
+</div>
+<div class="cursor" id="cursor" aria-hidden="true"><span></span></div>
+
+<!-- ══════════ FIXED CHROME ══════════ -->
+<header class="chrome">
+  <div class="chrome__mark">
+    <svg viewBox="0 0 100 100" class="uchiwa" aria-hidden="true">
+      <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" stroke-width="2"/>
+      <path d="M50 12 A38 38 0 0 1 50 88 A19 19 0 0 1 50 50 A19 19 0 0 0 50 12Z" fill="currentColor" opacity=".9"/>
+      <circle cx="50" cy="31" r="6" fill="var(--ink)"/>
+      <circle cx="50" cy="69" r="6" fill="currentColor"/>
+    </svg>
+    <span>ADITYA DUMBRE</span>
+  </div>
+  <nav class="chrome__nav">
+    <a href="#scrub" data-jp="CORE">CORE</a>
+    <a href="#eyes" data-jp="EYE SCAN">EYE SCAN</a>
+    <a href="#jutsu" data-jp="MATRIX">MATRIX</a>
+    <button class="chrome__sound" id="soundToggle" type="button"
+            aria-pressed="false" title="thunder audio">
+      <span class="chrome__sound-jp">AUDIO</span>
+      <span class="chrome__sound-state" id="soundState">OFF</span>
+    </button>
+  </nav>
+</header>
+
+<div class="rail rail--left" aria-hidden="true">
+  <span>SHARINGAN · AI/ML ENGINEER</span>
+</div>
+<div class="rail rail--right" aria-hidden="true">
+  <span id="railScroll">SCROLL 000%</span>
+</div>
+
+<div class="hint" id="hint">
+  <span class="hint__jp">DOWN</span>
+  <span class="hint__line"></span>
+  <span class="hint__en">SCROLL TO OPEN HIS EYES</span>
+</div>
+
+<main>
+
+  <!-- ══════════ ACT I — SCROLL SCRUB ══════════ -->
+  <section class="scrub" id="scrub">
+    <div class="scrub__sticky">
+      <canvas id="mainCanvas"></canvas>
+      <div class="scrub__glow" id="scrubGlow"></div>
+
+      <!-- phase captions -->
+      <div class="phase" data-phase="0">
+        <h1 class="phase__jp">SILENCE</h1>
+        <p class="phase__en">SILENCE</p>
+        <p class="phase__sub">The quest begins in quiet study. Let the data speak.</p>
+      </div>
+      <div class="phase" data-phase="1">
+        <h2 class="phase__jp">AWAKENING</h2>
+        <p class="phase__en">AWAKENING</p>
+        <p class="phase__sub">Neural models start learning. Core academic foundations active.</p>
+      </div>
+      <div class="phase" data-phase="2">
+        <h2 class="phase__jp">SHARINGAN</h2>
+        <p class="phase__en">DEEP GAZE</p>
+        <p class="phase__sub">Recognizing complex visual and semantic features. Nothing escapes the network parameters.</p>
+      </div>
+      <div class="phase" data-phase="3">
+        <h2 class="phase__jp">CROWS</h2>
+        <p class="phase__en">FLYING AGENTS</p>
+        <p class="phase__sub">Autonomous nodes dispatching semantic RAG signals across space.</p>
+      </div>
+
+      <!-- Title lockup -->
+      <div class="titleblock" id="titleblock">
+        <p class="titleblock__kicker">AI & MACHINE LEARNING · ENGINEER</p>
+        <h1 class="titleblock__jp">ADITYA<span> DUMBRE</span></h1>
+        <p class="titleblock__en">A D I T Y A &nbsp; D U M B R E</p>
+      </div>
+
+      <canvas id="featherCanvas" class="feathers"></canvas>
+    </div>
+  </section>
+
+  <!-- ══════════ ACT II — MOUSE-TRACKED EYES ══════════ -->
+  <section class="eyes" id="eyes">
+    <div class="eyes__sticky">
+      <canvas id="eyeCanvas"></canvas>
+      <div class="eyes__flare" id="eyeFlare"></div>
+      <div class="eyes__frame">
+        <div class="eyes__label eyes__label--tl">MANG EKYOU SHARINGAN</div>
+        <div class="eyes__label eyes__label--tr">GAZE ANALYTICS · LIVE TRACK</div>
+        <div class="eyes__label eyes__label--bl" id="eyeReadout">GAZE CENTER 00.0 / FRAME 00</div>
+        <div class="eyes__label eyes__label--br">MOVE YOUR CURSOR</div>
+      </div>
+      <div class="eyes__copy">
+        <h2>EYE<span> TRACKING</span></h2>
+        <p>Visual tracking simulation. Move your cursor.</p>
+        <p class="eyes__note">GAZE TRACKING ANALYSIS · 9 measured gaze positions, mapped left to right</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ ACT III — JUTSU MATRIX GRID ══════════ -->
+  <section class="jutsu" id="jutsu">
+    <div class="jutsu__reveal" id="jutsuReveal" aria-hidden="true"></div>
+    <div class="jutsu__rain" aria-hidden="true"></div>
+    <canvas class="ghost" id="ghostCanvas" aria-hidden="true"></canvas>
+
+    <div class="jutsu__inner">
+      <div class="jutsu__head">
+        <span class="eyebrow" data-px="0.10">PORTFOLIO MATRIX</span>
+        <h2 data-px="0.18">Expertise & Projects</h2>
+        <p data-px="0.26">Sectors of expertise, projects, and achievements. Move your cursor over the screen to ignite the Amaterasu flames and uncover the underlying telemetry.</p>
+        <div class="jutsu__meta" data-px="0.34">
+          <span><i>INTELLIGENCE</i>AI / ML</span>
+          <span><i>ACADEMICS</i>EDUCATION</span>
+          <span><i>JOURNEY</i>PROJECTS</span>
         </div>
-        <nav class="header-nav">
-          <div class="nav-links">
-            <button class="nav-link-btn active" data-index="0">CORE</button>
-            <button class="nav-link-btn" data-index="1">EDUCATION</button>
-            <button class="nav-link-btn" data-index="2">SKILLS</button>
-            <button class="nav-link-btn" data-index="3">PROJECTS</button>
-            <button class="nav-link-btn" data-index="4">CERTIFICATIONS</button>
-            <button class="nav-link-btn" data-index="5">EXTRA</button>
-            <button class="nav-link-btn" data-index="6">CONTACT</button>
-          </div>
-        </nav>
-        <div class="header-actions">
-          <button id="sound-toggle" class="action-icon-btn" title="Toggle Music">
-            <span class="sound-icon">🔊</span>
-          </button>
-        </div>
-      </header>
+        <p class="jutsu__hint" data-px="0.40">HOVER AND DRAG · BURN THE DARK AWAY</p>
+      </div>
 
-      <!-- Carousel Navigation Arrows (Side controls) -->
-      <button id="prev-arrow" class="nav-arrow left" aria-label="Previous Section">&larr;</button>
-      <button id="next-arrow" class="nav-arrow right" aria-label="Next Section">&rarr;</button>
-
-      <!-- Central Exhibition Cards Container -->
-      <main class="exhibition-container">
+      <!-- Resume cards grid -->
+      <div class="jutsu__grid">
+        
         <!-- CARD 0: CORE HUB -->
-        <section class="exhibition-card active" id="card-0">
-          <div class="card-content">
-            <span class="card-tag">[SECTOR 00]</span>
-            <h2 class="card-title">Core Nebula</h2>
-            <div class="card-divider"></div>
-            
+        <div class="card" data-reveal>
+          <span class="card__num">00</span>
+          <h3 class="card__jp">Core Nebula</h3>
+          <p class="card__ro">CORE NEBULA</p>
+          <div class="card__txt">
             <div class="resume-section">
-              <h3 class="name-header">Aditya Rohidas Dumbre</h3>
-              <div class="contact-line">adityad.9051@gmail.com | Mumbai, Maharashtra</div>
-              
+              <h4 class="name-header">Aditya Dumbre</h4>
+              <div class="contact-line">adityad.9051@gmail.com | +91 9326762723 | Mumbai, Maharashtra</div>
               <div class="links-row">
                 <a href="https://linkedin.com/in/adityad15" target="_blank" class="accent-link">LinkedIn 🔗</a>
                 <a href="https://github.com/aditya-dumbre" target="_blank" class="accent-link">GitHub 🔗</a>
               </div>
-              
-              <div class="block-desc" style="margin-top: 15px;">
-                I am a Computer Engineering student and developer passionate about building scalable backend architectures, distributed enterprise applications, and AI/ML integrations. Experienced in Java, Kotlin, Python, and SQL, with a track record of implementing robust, containerized and synchronized services.
-              </div>
-              
-              <div class="details-list" style="margin-top: 15px;">
-                <strong>Primary Interests:</strong> Distributed Systems, Scalable Enterprise Software, AI/ML Integration, Open Source Contribution, Game Development.
+              <p class="block-desc">
+                AI/Machine Learning Engineer with hands-on experience developing intelligent applications using Python, Machine Learning, FastAPI, Retrieval-Augmented Generation (RAG), and Natural Language Processing (NLP).
+              </p>
+              <div class="details-list">
+                <strong>Core Strengths:</strong> RAG pipelines, ML Model Pipelines, API Development, and Gaze Tracking telemetry logs.
               </div>
             </div>
           </div>
-        </section>
+          <div class="card__foot"><i>[00]</i>SECTOR ZERO</div>
+        </div>
 
         <!-- CARD 1: EDUCATION -->
-        <section class="exhibition-card" id="card-1">
-          <div class="card-content">
-            <span class="card-tag">[SECTOR 01]</span>
-            <h2 class="card-title">Education</h2>
-            <div class="card-divider"></div>
-            
+        <div class="card" data-reveal>
+          <span class="card__num">01</span>
+          <h3 class="card__jp">Education</h3>
+          <p class="card__ro">EDUCATION</p>
+          <div class="card__txt">
             <div class="resume-section scrollable">
               <div class="resume-block">
-                <h4 class="block-title">Bachelor of Engineering, Computer Engineering</h4>
-                <div class="block-subtitle">Savitribai Phule Pune University | TSSM's BSCOER, Narhe, Pune</div>
-                <div class="block-meta">2022 – 2025 | CGPA Equivalent: 73.2%</div>
+                <h4 class="block-title">PG Certification in Artificial Intelligence</h4>
+                <div class="block-subtitle">CDAC Mumbai, Kharghar</div>
+                <div class="block-meta">Feb 2026 – Aug 2026</div>
               </div>
-              
+              <div class="resume-block">
+                <h4 class="block-title">Bachelor of Engineering (Computer Engineering)</h4>
+                <div class="block-subtitle">STES's SKNCOE, Pune</div>
+                <div class="block-meta">Nov 2022 – Jun 2025 | CGPA: 8.07</div>
+              </div>
               <div class="resume-block">
                 <h4 class="block-title">Diploma in Computer Engineering</h4>
-                <div class="block-subtitle">MSBTE | Narhe, Pune</div>
-                <div class="block-meta">2019 – 2022 | Academic Score: 89.89%</div>
+                <div class="block-subtitle">TSSM's BSCOER Polytechnic, Pune</div>
+                <div class="block-meta">May 2019 – Jul 2022 | Score: 89.89%</div>
               </div>
-
               <div class="resume-block">
                 <h4 class="block-title">Trivia Decrypter</h4>
-                <p class="block-desc" style="margin-bottom: 10px;">Select the correct answer below to test your knowledge of my academic coursework:</p>
+                <p class="block-desc" style="margin-bottom: 8px;">Select the correct answer to decrypt the educational ledger:</p>
                 <div id="edu-quiz-box">
-                  <!-- JS will inject quiz question and choices here -->
+                  <!-- Quiz injected here -->
                 </div>
               </div>
             </div>
           </div>
-        </section>
+          <div class="card__foot"><i>[01]</i>SECTOR ONE</div>
+        </div>
 
         <!-- CARD 2: SKILLS -->
-        <section class="exhibition-card" id="card-2">
-          <div class="card-content">
-            <span class="card-tag">[SECTOR 02]</span>
-            <h2 class="card-title">Technical Skills</h2>
-            <div class="card-divider"></div>
-            
+        <div class="card" data-reveal>
+          <span class="card__num">02</span>
+          <h3 class="card__jp">Skills Matrix</h3>
+          <p class="card__ro">SKILLS MATRIX</p>
+          <div class="card__txt">
             <div class="resume-section scrollable">
-              <p class="block-desc" style="margin-bottom: 12px;">Hover over any category to highlight technical parameters, or rotate the 3D grid with your mouse:</p>
-              
-              <div class="skills-category" id="skills-cat-langs">
+              <div class="skills-category">
                 <h5>Languages</h5>
                 <div class="skills-grid">
-                  <span class="skill-pill active" data-name="Java">Java</span>
-                  <span class="skill-pill active" data-name="Python">Python</span>
-                  <span class="skill-pill active" data-name="SQL">SQL</span>
-                  <span class="skill-pill active" data-name="Kotlin">Kotlin</span>
+                  <span class="skill-pill active">Python</span>
+                  <span class="skill-pill active">Java</span>
+                  <span class="skill-pill active">SQL</span>
+                  <span class="skill-pill active">Kotlin</span>
                 </div>
               </div>
-              
-              <div class="skills-category" id="skills-cat-frames" style="margin-top: 12px;">
-                <h5>Frameworks & Libraries</h5>
+              <div class="skills-category">
+                <h5>Machine Learning & Gen AI</h5>
                 <div class="skills-grid">
-                  <span class="skill-pill" data-name="Flask">Flask</span>
-                  <span class="skill-pill" data-name="TensorFlow">TensorFlow</span>
-                  <span class="skill-pill" data-name="Keras">Keras</span>
-                  <span class="skill-pill" data-name="scikit-learn">scikit-learn</span>
-                  <span class="skill-pill" data-name="Pandas">Pandas</span>
-                  <span class="skill-pill" data-name="NumPy">NumPy</span>
-                  <span class="skill-pill" data-name="Spring Boot">Spring Boot</span>
+                  <span class="skill-pill">Scikit-learn</span>
+                  <span class="skill-pill">TensorFlow</span>
+                  <span class="skill-pill">NumPy</span>
+                  <span class="skill-pill">Pandas</span>
+                  <span class="skill-pill">RAG</span>
+                  <span class="skill-pill">FAISS</span>
+                  <span class="skill-pill">NLP</span>
+                  <span class="skill-pill">Embeddings</span>
                 </div>
               </div>
-              
-              <div class="skills-category" id="skills-cat-tools" style="margin-top: 12px;">
-                <h5>Tools & Databases</h5>
+              <div class="skills-category">
+                <h5>Backend & Databases</h5>
                 <div class="skills-grid">
-                  <span class="skill-pill" data-name="PostgreSQL">PostgreSQL</span>
-                  <span class="skill-pill" data-name="MySQL">MySQL</span>
-                  <span class="skill-pill" data-name="Git">Git</span>
-                  <span class="skill-pill" data-name="GitHub">GitHub</span>
-                  <span class="skill-pill" data-name="Android Studio">Android Studio</span>
-                  <span class="skill-pill" data-name="MinIO">MinIO</span>
+                  <span class="skill-pill">FastAPI</span>
+                  <span class="skill-pill">Flask</span>
+                  <span class="skill-pill">REST APIs</span>
+                  <span class="skill-pill">PostgreSQL</span>
+                  <span class="skill-pill">MySQL</span>
+                </div>
+              </div>
+              <div class="skills-category">
+                <h5>Tools & Concepts</h5>
+                <div class="skills-grid">
+                  <span class="skill-pill">Git</span>
+                  <span class="skill-pill">GitHub</span>
+                  <span class="skill-pill">Docker</span>
+                  <span class="skill-pill">Linux</span>
+                  <span class="skill-pill">Data Pipelines</span>
                 </div>
               </div>
             </div>
           </div>
-        </section>
+          <div class="card__foot"><i>[02]</i>SECTOR TWO</div>
+        </div>
 
         <!-- CARD 3: PROJECTS -->
-        <section class="exhibition-card" id="card-3">
-          <div class="card-content">
-            <span class="card-tag">[SECTOR 03]</span>
-            <h2 class="card-title">Projects Nexus</h2>
-            <div class="card-divider"></div>
-            
+        <div class="card" data-reveal>
+          <span class="card__num">03</span>
+          <h3 class="card__jp">Projects Nexus</h3>
+          <p class="card__ro">PROJECTS NEXUS</p>
+          <div class="card__txt">
             <div class="resume-section scrollable">
-              <!-- Project 1 -->
               <div class="resume-block">
-                <h4 class="block-title">Prushtha – Synchronized Book Reading App</h4>
-                <div class="block-subtitle">Kotlin, Spring Boot, PostgreSQL, MinIO, KMP</div>
+                <h4 class="block-title">ReguMind AI – RAG Compliance Platform</h4>
+                <div class="block-subtitle">Python • FastAPI • FAISS • NLP • RAG</div>
                 <p class="block-desc">
-                  • Architected a cross-platform Kotlin Multiplatform (KMP) app with Android/Desktop targets using Compose UI and SQLDelight local storage.<br>
-                  • Built a Spring Boot backend with PostgreSQL for user databases and MinIO for distributed object storage.<br>
-                  • Defined full Software Requirements Specification (SRS) and delivered a 27-file production-ready codebase.
+                  Conversational Q&A over enterprise regulatory documents. Features PDF parsing, semantic chunking, embeddings, and FAISS indexing.
                 </p>
                 <div class="project-actions">
-                  <a href="https://github.com/aditya-dumbre/Prushtha" target="_blank" class="accent-link">GitHub Crypt</a>
-                  <button class="project-test-btn" id="run-prushtha-btn">Verify Compile Build</button>
+                  <a href="https://github.com/aditya-dumbre" target="_blank" class="accent-link">GitHub 🔗</a>
+                  <button class="project-test-btn" id="run-regumind-btn">Verify RAG</button>
                 </div>
               </div>
-              
               <hr class="card-separator">
-
-              <!-- Project 2 -->
               <div class="resume-block">
-                <h4 class="block-title">Machinery Failure Analysis Using ML</h4>
-                <div class="block-subtitle">Python, scikit-learn, Flask, SMOTE</div>
+                <h4 class="block-title">ML Predictive Maintenance System</h4>
+                <div class="block-subtitle">Python • Scikit-learn • Pandas • Flask</div>
                 <p class="block-desc">
-                  • Built a predictive maintenance system on the AI4I dataset to classify industrial equipment failures, reducing unplanned downtime.<br>
-                  • Handled class imbalance using SMOTE oversampling; achieved high precision across multiple failure modes.<br>
-                  • Developed a Flask interface supporting model training pipelines and prediction API endpoints.
+                  End-to-end ML pipeline predicting machinery failure using operational logs. Class imbalances mitigated via SMOTE.
                 </p>
                 <div class="project-actions">
-                  <a href="https://github.com/aditya-dumbre/machinery-failure-analysis-using-ml" target="_blank" class="accent-link">GitHub Crypt</a>
-                  <button class="project-test-btn" id="run-ml-btn">Trigger Model Fit</button>
-                </div>
-              </div>
-
-              <hr class="card-separator">
-
-              <!-- Project 3 -->
-              <div class="resume-block">
-                <h4 class="block-title">SpeakX Pro</h4>
-                <div class="block-subtitle">Python, NLP, REST API, SQL (In Progress)</div>
-                <p class="block-desc">
-                  • Engineering a backend service integrating NLP pipelines for speech-to-text and language processing.<br>
-                  • Designing RESTful API endpoints for low-latency concurrent requests across multiple clients.
-                </p>
-                <div class="project-actions">
-                  <a href="https://github.com/aditya-dumbre/SpeakX-Pro-main" target="_blank" class="accent-link">GitHub Crypt</a>
-                  <button class="project-test-btn" id="run-speakx-btn">Start Speech Stream</button>
+                  <a href="https://github.com/aditya-dumbre/machinery-failure-analysis-using-ml" target="_blank" class="accent-link">GitHub 🔗</a>
+                  <button class="project-test-btn" id="run-ml-btn">Fit Model</button>
                 </div>
               </div>
             </div>
           </div>
-        </section>
+          <div class="card__foot"><i>[03]</i>SECTOR THREE</div>
+        </div>
 
         <!-- CARD 4: CERTIFICATIONS -->
-        <section class="exhibition-card" id="card-4">
-          <div class="card-content">
-            <span class="card-tag">[SECTOR 04]</span>
-            <h2 class="card-title">Certifications</h2>
-            <div class="card-divider"></div>
-            
-            <div class="resume-section">
+        <div class="card" data-reveal>
+          <span class="card__num">04</span>
+          <h3 class="card__jp">Certifications</h3>
+          <p class="card__ro">CERTIFICATIONS</p>
+          <div class="card__txt">
+            <div class="resume-section scrollable">
               <div class="resume-block">
                 <h4 class="block-title">Python 3.4.3 Training</h4>
                 <div class="block-subtitle">IIT Bombay (Spoken Tutorial Project)</div>
-                <p class="block-desc">Verified certification on core programming, functional modules, and libraries.</p>
               </div>
-              
-              <div class="resume-block" style="margin-top: 15px;">
+              <div class="resume-block">
                 <h4 class="block-title">Data Analytics Job Simulation</h4>
                 <div class="block-subtitle">Deloitte (via Forage)</div>
-                <p class="block-desc">Completed real-world business analysis simulations and visual dashboard drafting.</p>
               </div>
-
-              <div class="resume-block" style="margin-top: 15px;">
+              <div class="resume-block">
                 <h4 class="block-title">Oracle SQL Certification</h4>
                 <div class="block-subtitle">Great Learning Academy</div>
-                <p class="block-desc">Validated database management, multi-table joins, subqueries, and optimizations.</p>
               </div>
-
-              <div class="cert-scanner-box" style="margin-top: 20px;">
-                <button class="project-test-btn" id="scan-certs-btn" style="width: 100%;">Sweep Digital Signature Authenticator</button>
-                <div id="scan-certs-status" style="margin-top: 8px; font-family: var(--font-code); font-size: 11px;"></div>
+              <div class="cert-scanner-box">
+                <button class="project-test-btn" id="scan-certs-btn" style="width: 100%;">Sweep Signatures</button>
+                <div id="scan-certs-status" style="margin-top: 8px; font-family: var(--mono); font-size: 11px;"></div>
               </div>
             </div>
           </div>
-        </section>
+          <div class="card__foot"><i>[04]</i>SECTOR FOUR</div>
+        </div>
 
         <!-- CARD 5: EXTRA-CURRICULAR -->
-        <section class="exhibition-card" id="card-5">
-          <div class="card-content">
-            <span class="card-tag">[SECTOR 05]</span>
-            <h2 class="card-title">Extra-Curricular Activities</h2>
-            <div class="card-divider"></div>
-            
+        <div class="card" data-reveal>
+          <span class="card__num">05</span>
+          <h3 class="card__jp">Extra-Curricular</h3>
+          <p class="card__ro">EXTRA-CURRICULAR</p>
+          <div class="card__txt">
             <div class="resume-section scrollable">
               <div class="resume-block">
                 <h4 class="block-title">Nike Running Club Marathoner</h4>
                 <div class="block-subtitle">Athletics & Physical Endurance</div>
-                <p class="block-desc">
-                  • Recently completed running milestones as a marathoner at the Nike Running Club.<br>
-                  • Dedicated to training, stamina development, and distance tracking.
-                </p>
+                <p class="block-desc">Completed running milestones as a distance runner. Focus on stamina and consistency.</p>
               </div>
-
-              <div class="resume-block" style="margin-top: 15px;">
+              <div class="resume-block">
                 <h4 class="block-title">Deepfake Paper Presentation</h4>
                 <div class="block-subtitle">Emerging Tech & AI Safety</div>
-                <p class="block-desc">
-                  • Researched and delivered a detailed presentation on Deepfake creation frameworks, forensic detection systems, and ethical guidelines.
-                </p>
+                <p class="block-desc">Delivered detailed study on creation frameworks and neural forensic detection tools.</p>
               </div>
             </div>
           </div>
-        </section>
+          <div class="card__foot"><i>[05]</i>SECTOR FIVE</div>
+        </div>
 
         <!-- CARD 6: CONTACT -->
-        <section class="exhibition-card" id="card-6">
-          <div class="card-content">
-            <span class="card-tag">[SECTOR 06]</span>
-            <h2 class="card-title">Contact</h2>
-            <div class="card-divider"></div>
-            
-            <div class="resume-section">
+        <div class="card" data-reveal>
+          <span class="card__num">06</span>
+          <h3 class="card__jp">Contact Signal</h3>
+          <p class="card__ro">CONTACT SIGNAL</p>
+          <div class="card__txt">
+            <div class="resume-section scrollable">
               <ul class="contact-bullets">
                 <li><strong>Direct Signal:</strong> adityad.9051@gmail.com</li>
                 <li><strong>Location:</strong> Mumbai, Maharashtra, India</li>
-                <li><strong>Languages:</strong> English, Marathi, Hindi</li>
               </ul>
-              
               <form class="contact-form" id="contact-transmission-form" onsubmit="return false;">
                 <div class="form-group">
                   <label for="c-name">YOUR NAME</label>
@@ -298,58 +379,61 @@
                 </div>
                 <div class="form-group">
                   <label for="c-msg">MESSAGE</label>
-                  <textarea id="c-msg" class="form-input form-textarea" required placeholder="Let's build something beautiful..."></textarea>
+                  <textarea id="c-msg" class="form-input form-textarea" required placeholder="Let's build something..."></textarea>
                 </div>
-                <button type="submit" class="transmit-btn">TRANSMIT TRANSMISSION</button>
+                <button type="submit" class="transmit-btn">TRANSMIT</button>
               </form>
-              <div id="transmission-status" style="margin-top: 8px; font-size: 11.5px; font-weight: bold; color: var(--color-green);"></div>
+              <div id="transmission-status" style="margin-top: 8px; font-size: 11.5px; font-weight: bold;"></div>
             </div>
           </div>
-        </section>
-      </main>
-
-      <!-- Bottom Status & Progression Indicators -->
-      <footer class="portfolio-footer">
-        <div class="footer-status">
-          <span class="monotext" id="status-log">> Connection active. Serene archives ready.</span>
+          <div class="card__foot"><i>[06]</i>SECTOR SIX</div>
         </div>
-        <div class="dot-indicators">
-          <span class="dot-indicator active" data-index="0"></span>
-          <span class="dot-indicator" data-index="1"></span>
-          <span class="dot-indicator" data-index="2"></span>
-          <span class="dot-indicator" data-index="3"></span>
-          <span class="dot-indicator" data-index="4"></span>
-          <span class="dot-indicator" data-index="5"></span>
-          <span class="dot-indicator" data-index="6"></span>
-        </div>
-      </footer>
 
-      <!-- Simple Soothing Onboarding Loader Overlay -->
-      <div id="loading-screen" class="overlay-screen">
-        <div class="loading-container glass-panel">
-          <h1 class="glow-cyan">ADITYA DUMBRE</h1>
-          <div class="monotext glow-magenta" style="margin-bottom: 20px;">INTERACTIVE 3D EXHIBITION PORTFOLIO</div>
-          
-          <div class="loading-progress-box">
-            <div class="loading-text">TUNING FREQUENCIES... <span id="loading-pct">0%</span></div>
-            <div class="loading-bar-outer">
-              <div id="loading-bar" class="loading-bar-inner glow-cyan" style="width: 0%"></div>
-            </div>
-          </div>
+      </div>
 
-          <div id="onboarding-controls" class="onboarding-info hidden">
-            <h3>EXHIBITION CONTROL DECK:</h3>
-            <p class="onboarding-desc">
-              Welcome. This space presents Aditya's resume in a soothing, 3D golden-hour studio. 
-              Drift through the sectors using the <strong>Quick Navigation Menu</strong> at the top, the <strong>Side Arrows</strong>, or by simply <strong>Scrolling</strong>.
-            </p>
-            <button id="start-game-btn" class="start-btn glow-btn glow-magenta">ENTER EXHIBITION</button>
-          </div>
-        </div>
+      <!-- foot block -->
+      <div class="jutsu__foot" data-px="0.14">
+        <span>"I WILL PROTECT THE LEAF VILLAGE."</span>
+        <span>TO PROTECT THE VILLAGE, HE GAVE UP BEING LOVED BY IT</span>
       </div>
     </div>
 
-    <!-- Script loading -->
-    <script type="module" src="/src/main.js"></script>
-  </body>
+    <!-- bottom-right anchor -->
+    <div class="jutsu__amaterasu" aria-hidden="true">
+      <span class="jutsu__amaterasu-jp">AMATERASU</span>
+      <span class="jutsu__amaterasu-ro">BLACK FLAMES</span>
+      <span class="jutsu__amaterasu-sub">INEXTINGUISHABLE EMBER SYSTEM</span>
+    </div>
+  </section>
+
+  <!-- ══════════ ACT I V — QUOTE ══════════ -->
+  <section class="quote">
+    <div class="quote__jp">Forgive me, Sasuke<span class="dots">...</span></div>
+    <blockquote>
+      <p>“Those who cannot acknowledge their true selves are bound to fail. People live their lives bound by what they accept as correct and true — that's how they define reality.”</p>
+      <cite>UCHIHA ITACHI</cite>
+    </blockquote>
+    <div class="quote__mark">This is the end</div>
+  </section>
+
+  <!-- ══════════ FOOTER ══════════ -->
+  <footer id="end">
+    <div class="footer__big">WILL OF FIRE</div>
+    <div class="footer__row">
+      <span>WILL OF FIRE</span>
+      <span>ADITYA DUMBRE · AI/ML ENGINEER</span>
+      <span>"I will love you always."</span>
+    </div>
+  </footer>
+
+</main>
+
+<!-- ══════════ STICKY BADGE ══════════ -->
+<div class="sticky-badge" id="stickyBadge">
+  <span class="sticky-badge__jp">ONLINE</span>
+  <span class="sticky-badge__en">SYSTEM READY</span>
+</div>
+
+<script type="module" src="/src/main.js"></script>
+</body>
 </html>

@@ -1,896 +1,1035 @@
+/* ═══════════════════════════════════════════════════════════
+   ADITYA DUMBRE — PORTFOLIO ENGINE (ITACHI-THEME INTEGRATION)
+   ═══════════════════════════════════════════════════════════ */
+
 import './style.css';
-import * as THREE from 'three';
 import { gsap } from 'gsap';
 
-// ==========================================
-// RESUME SECTOR DATA DEFINITIONS
-// ==========================================
-const SECTOR_LOGS = [
-  "> Core identity matrix decrypted.",
-  "> Academic logs synchronized.",
-  "> Skill indexes mapped to visual canvas.",
-  "> Projects compilation logs compiled.",
-  "> Digital signatures verified successfully.",
-  "> Extra-curricular logs synchronized.",
-  "> Communication channels initialized."
+const MAIN_COUNT = 71;
+const EYE_COUNT  = 51;
+const pad = n => String(n).padStart(3, '0');
+
+const lerp  = (a, b, t) => a + (b - a) * t;
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+/* fade in over [a,b], hold, fade out over [c,d] */
+const window4 = (p, a, b, c, d) =>
+  p < a || p > d ? 0 : p < b ? (p - a) / (b - a) : p > c ? 1 - (p - c) / (d - c) : 1;
+
+/* ───────────────────────── preload ───────────────────────── */
+const mainFrames = [];
+const eyeFrames  = [];
+let loaded = 0;
+const total = MAIN_COUNT + EYE_COUNT;
+
+const loaderEl  = document.getElementById('loader');
+const loaderFill = document.getElementById('loaderFill');
+const loaderPct  = document.getElementById('loaderPct');
+
+function load(src, bucket, index) {
+  return new Promise(res => {
+    const img = new Image();
+    img.decoding = 'async';
+    img.onload = img.onerror = () => {
+      bucket[index] = img;
+      loaded++;
+      const pct = loaded / total;
+      loaderFill.style.width = (pct * 100).toFixed(1) + '%';
+      loaderPct.textContent = String(Math.round(pct * 100)).padStart(2, '0');
+      res();
+    };
+    img.src = src;
+  });
+}
+
+const jobs = [];
+for (let i = 1; i <= MAIN_COUNT; i++) jobs.push(load(`/frames/main/${pad(i)}.jpg`, mainFrames, i - 1));
+for (let i = 1; i <= EYE_COUNT;  i++) jobs.push(load(`/frames/eyes/${pad(i)}.jpg`, eyeFrames,  i - 1));
+
+Promise.all(jobs).then(() => {
+  setTimeout(() => {
+    loaderEl.classList.add('done');
+    document.body.classList.add('ready');
+    // ensure first paint is correct once fonts/layout settle
+    resizeAll();
+    setupResumeInteractions();
+    setTimeout(() => { loaderEl.style.display = 'none'; }, 1100);
+  }, 420);
+});
+
+/* ─────────────────── canvas cover-draw helper ─────────────────── */
+function fitCanvas(canvas) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = Math.round(canvas.offsetWidth  * dpr);
+  const h = Math.round(canvas.offsetHeight * dpr);
+  if (canvas.width !== w || canvas.height !== h) {
+    canvas.width = w; canvas.height = h;
+  }
+  return canvas.getContext('2d');
+}
+
+function syncSize(canvas) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = Math.round(canvas.offsetWidth * dpr);
+  const h = Math.round(canvas.offsetHeight * dpr);
+  return canvas.width !== w || canvas.height !== h;
+}
+
+function drawCover(ctx, img, cw, ch, maxUp = 2.0) {
+  if (!img || !img.naturalWidth) return false;
+  const ir = img.naturalWidth / img.naturalHeight;
+  let w = cw, h = cw / ir;
+  if (h < ch) {
+    const s = Math.min(ch / h, maxUp);
+    w *= s; h *= s;
+  }
+  ctx.drawImage(img, (cw - w) / 2, (ch - h) / 2, w, h);
+  return true;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   GHOST CURSOR (Raw WebGL fbm-smoke trail)
+   ═══════════════════════════════════════════════════════════ */
+function createGhostCursor(canvas, opts = {}) {
+  const TRAIL    = opts.trailLength ?? 28;
+  const INERTIA  = opts.inertia ?? 0.5;
+  const MAX_DPR  = opts.maxDevicePixelRatio ?? 0.45;
+  const BUDGET   = opts.targetPixels ?? 4.2e5;
+  const BRIGHT   = opts.brightness ?? 1.45;
+  const EDGE     = opts.edgeIntensity ?? 0.35;
+  const FADE_DELAY = opts.fadeDelayMs ?? 900;
+  const FADE_DUR   = opts.fadeDurationMs ?? 1400;
+  const rgb = hexToRgb(opts.color ?? '#ff2b2b');
+
+  const gl = canvas.getContext('webgl', {
+    alpha: true, antialias: false, depth: false, stencil: false,
+    premultipliedAlpha: false, powerPreference: 'high-performance'
+  });
+  if (!gl) return { resize() {}, move() {}, render() {}, ok: false };
+
+  const VERT = `
+    attribute vec2 aPos;
+    void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }
+  `;
+
+  const FRAG = `
+    precision highp float;
+    #define MAX_TRAIL_LENGTH ${TRAIL}
+
+    uniform float iTime;
+    uniform vec3  iResolution;
+    uniform vec2  iMouse;
+    uniform vec2  iPrevMouse[MAX_TRAIL_LENGTH];
+    uniform float iOpacity;
+    uniform float iScale;
+    uniform vec3  iBaseColor;
+    uniform float iBrightness;
+    uniform float iEdgeIntensity;
+
+    float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7))) * 43758.5453123); }
+    float noise(vec2 p){
+      vec2 i = floor(p), f = fract(p);
+      f *= f * (3. - 2. * f);
+      return mix(mix(hash(i + vec2(0.,0.)), hash(i + vec2(1.,0.)), f.x),
+                 mix(hash(i + vec2(0.,1.)), hash(i + vec2(1.,1.)), f.x), f.y);
+    }
+    float fbm(vec2 p){
+      float v = 0.0;
+      float a = 0.5;
+      mat2 m = mat2(cos(0.5), sin(0.5), -sin(0.5), cos(0.5));
+      for(int i=0;i<5;i++){
+        v += a * noise(p);
+        p = m * p * 2.0;
+        a *= 0.5;
+      }
+      return v;
+    }
+    vec3 tint1(vec3 base){ return mix(base, vec3(1.0), 0.15); }
+    vec3 tint2(vec3 base){ return mix(base, vec3(0.8, 0.9, 1.0), 0.25); }
+
+    vec4 blob(vec2 p, vec2 mousePos, float intensity, float activity) {
+      vec2 q = vec2(fbm(p * iScale + iTime * 0.1), fbm(p * iScale + vec2(5.2,1.3) + iTime * 0.1));
+      vec2 r = vec2(fbm(p * iScale + q * 1.5 + iTime * 0.15), fbm(p * iScale + q * 1.5 + vec2(8.3,2.8) + iTime * 0.15));
+
+      float smoke = fbm(p * iScale + r * 0.8);
+      float radius = 0.5 + 0.3 * (1.0 / iScale);
+      float distFactor = 1.0 - smoothstep(0.0, radius * activity, length(p - mousePos));
+      float alpha = pow(smoke, 2.5) * distFactor;
+
+      vec3 c1 = tint1(iBaseColor);
+      vec3 c2 = tint2(iBaseColor);
+      vec3 color = mix(c1, c2, sin(iTime * 0.5) * 0.5 + 0.5);
+
+      return vec4(color * alpha * intensity, alpha * intensity);
+    }
+
+    void main() {
+      vec2 uv = (gl_FragCoord.xy / iResolution.xy * 2.0 - 1.0) * vec2(iResolution.x / iResolution.y, 1.0);
+      vec2 mouse = (iMouse * 2.0 - 1.0) * vec2(iResolution.x / iResolution.y, 1.0);
+
+      vec3 colorAcc = vec3(0.0);
+      float alphaAcc = 0.0;
+
+      vec4 b = blob(uv, mouse, 1.0, iOpacity);
+      colorAcc += b.rgb;
+      alphaAcc += b.a;
+
+      for (int i = 0; i < MAX_TRAIL_LENGTH; i++) {
+        vec2 pm = (iPrevMouse[i] * 2.0 - 1.0) * vec2(iResolution.x / iResolution.y, 1.0);
+        float t = 1.0 - float(i) / float(MAX_TRAIL_LENGTH);
+        t = pow(t, 2.0);
+        if (t > 0.01) {
+          vec4 bt = blob(uv, pm, t * 0.8, iOpacity);
+          colorAcc += bt.rgb;
+          alphaAcc += bt.a;
+        }
+      }
+
+      colorAcc *= iBrightness;
+
+      vec2 uv01 = gl_FragCoord.xy / iResolution.xy;
+      float edgeDist = min(min(uv01.x, 1.0 - uv01.x), min(uv01.y, 1.0 - uv01.y));
+      float distFromEdge = clamp(edgeDist * 2.0, 0.0, 1.0);
+      float k = clamp(iEdgeIntensity, 0.0, 1.0);
+      float edgeMask = mix(1.0 - k, 1.0, distFromEdge);
+
+      float outAlpha = clamp(alphaAcc * iOpacity * edgeMask, 0.0, 1.0);
+      gl_FragColor = vec4(colorAcc, outAlpha);
+    }
+  `;
+
+  function compile(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+      console.warn('ghost shader:', gl.getShaderInfoLog(s));
+      return null;
+    }
+    return s;
+  }
+  const vs = compile(gl.VERTEX_SHADER, VERT);
+  const fs = compile(gl.FRAGMENT_SHADER, FRAG);
+  if (!vs || !fs) return { resize() {}, move() {}, render() {}, ok: false };
+
+  const prog = gl.createProgram();
+  gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return { resize() {}, move() {}, render() {}, ok: false };
+  gl.useProgram(prog);
+
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+  const aPos = gl.getAttribLocation(prog, 'aPos');
+  gl.enableVertexAttribArray(aPos);
+  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+  const U = n => gl.getUniformLocation(prog, n);
+  const uTime = U('iTime'), uRes = U('iResolution'), uMouse = U('iMouse'),
+        uPrev = U('iPrevMouse[0]'), uOpacity = U('iOpacity'), uScale = U('iScale'),
+        uColor = U('iBaseColor'), uBright = U('iBrightness'), uEdge = U('iEdgeIntensity');
+
+  gl.uniform3f(uColor, rgb[0], rgb[1], rgb[2]);
+  gl.uniform1f(uBright, BRIGHT);
+  gl.uniform1f(uEdge, EDGE);
+
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+  gl.clearColor(0, 0, 0, 0);
+
+  const trail = new Float32Array(TRAIL * 2).fill(0.5);
+  const flat  = new Float32Array(TRAIL * 2).fill(0.5);
+  let head = 0;
+
+  const target = { x: 0.5, y: 0.5 };
+  const cur    = { x: 0.5, y: 0.5 };
+  const vel    = { x: 0, y: 0 };
+  let pointerActive = false;
+  let lastMove = performance.now();
+  let fade = 0;
+  const t0 = performance.now();
+
+  function resize() {
+    const cssW = canvas.offsetWidth, cssH = canvas.offsetHeight;
+    if (cssW <= 0 || cssH <= 0) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
+    const need = cssW * cssH * dpr * dpr;
+    const s = need <= BUDGET ? 1 : Math.max(0.4, Math.min(1, Math.sqrt(BUDGET / Math.max(1, need))));
+    const pr = dpr * s;
+    const w = Math.max(1, Math.floor(cssW * pr));
+    const h = Math.max(1, Math.floor(cssH * pr));
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w; canvas.height = h;
+    }
+    gl.viewport(0, 0, w, h);
+    gl.useProgram(prog);
+    gl.uniform3f(uRes, w, h, 1);
+    const base = Math.min(Math.max(1, cssW), Math.max(1, cssH));
+    gl.uniform1f(uScale, Math.max(0.5, Math.min(2.0, base / 600)));
+  }
+
+  function move(x, y, active = true) {
+    target.x = clamp(x); target.y = clamp(1 - y);
+    pointerActive = active;
+    if (active) { lastMove = performance.now(); fade = 1; }
+  }
+  function leave() { pointerActive = false; lastMove = performance.now(); }
+
+  function render() {
+    const now = performance.now();
+
+    if (pointerActive) {
+      vel.x = target.x - cur.x; vel.y = target.y - cur.y;
+      cur.x = target.x; cur.y = target.y;
+      fade = 1;
+    } else {
+      vel.x *= INERTIA; vel.y *= INERTIA;
+      if (vel.x * vel.x + vel.y * vel.y > 1e-6) { cur.x += vel.x; cur.y += vel.y; }
+      const dt = now - lastMove;
+      if (dt > FADE_DELAY) fade = Math.max(0, 1 - Math.min(1, (dt - FADE_DELAY) / FADE_DUR));
+    }
+    if (fade <= 0.001 && !pointerActive) { gl.clear(gl.COLOR_BUFFER_BIT); return false; }
+
+    head = (head + 1) % TRAIL;
+    trail[head * 2] = cur.x; trail[head * 2 + 1] = cur.y;
+    for (let i = 0; i < TRAIL; i++) {
+      const src = ((head - i) % TRAIL + TRAIL) % TRAIL;
+      flat[i * 2] = trail[src * 2];
+      flat[i * 2 + 1] = trail[src * 2 + 1];
+    }
+
+    gl.useProgram(prog);
+    gl.uniform1f(uTime, (now - t0) / 1000);
+    gl.uniform2f(uMouse, cur.x, cur.y);
+    gl.uniform2fv(uPrev, flat);
+    gl.uniform1f(uOpacity, fade);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    return true;
+  }
+
+  return { resize, move, leave, render, ok: true };
+}
+
+function hexToRgb(hex) {
+  const n = parseInt(hex.replace('#', ''), 16);
+  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+}
+
+/* ═══════════════════ ACT I — scroll scrub ═══════════════════ */
+const scrubSection = document.getElementById('scrub');
+const mainCanvas   = document.getElementById('mainCanvas');
+const scrubGlow    = document.getElementById('scrubGlow');
+const titleblock   = document.getElementById('titleblock');
+const phases       = [...document.querySelectorAll('.phase')];
+let mainCtx = fitCanvas(mainCanvas);
+
+let frameTarget = 0, frameShown = 0, lastDrawn = -1;
+let scrubProgress = 0;
+
+function readScrub() {
+  const rect = scrubSection.getBoundingClientRect();
+  const dist = scrubSection.offsetHeight - window.innerHeight;
+  scrubProgress = clamp(-rect.top / (dist || 1));
+  frameTarget = scrubProgress * (MAIN_COUNT - 1);
+}
+
+const PHASE_WINDOWS = [
+  [0.13, 0.17, 0.21, 0.25],
+  [0.27, 0.31, 0.37, 0.42],
+  [0.45, 0.49, 0.63, 0.69],
+  [0.74, 0.79, 0.97, 1.01],
 ];
 
-// ==========================================
-// AUDIO SYNTHESIZER (SOOTHING & MELLOW)
-// ==========================================
-class SereneSynth {
-  constructor() {
-    this.ctx = null;
-    this.muted = false;
-    this.bgInterval = null;
-    this.bgGain = null;
-    this.activeOscillators = [];
-  }
+function paintOverlays(p) {
+  phases.forEach((el, i) => {
+    const o = window4(p, ...PHASE_WINDOWS[i]);
+    el.style.opacity = o.toFixed(3);
+    el.style.setProperty('--y', `${((1 - o) * 34).toFixed(1)}px`);
+    el.style.filter = `blur(${((1 - o) * 7).toFixed(2)}px)`;
+  });
 
-  init() {
-    if (this.ctx) return;
-    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-    this.startAmbientMusic();
-  }
+  const t = window4(p, -0.10, -0.05, 0.07, 0.13);
+  titleblock.style.opacity = t.toFixed(3);
+  titleblock.style.transform = `translateX(-50%) translateY(${((1 - t) * 40).toFixed(1)}px) scale(${(0.97 + t * 0.03).toFixed(3)})`;
+  titleblock.style.letterSpacing = `${((1 - t) * 0.12).toFixed(3)}em`;
 
-  toggleMute() {
-    this.muted = !this.muted;
-    if (this.bgGain) {
-      this.bgGain.gain.setValueAtTime(this.muted ? 0 : 0.05, this.ctx.currentTime);
-    }
-    return this.muted;
-  }
+  scrubGlow.style.opacity = (clamp((p - 0.32) / 0.16) * 0.85).toFixed(3);
+}
 
-  playChime() {
-    // Soft, soothing major arpeggio chime (e.g., E Major 7)
-    if (this.muted || !this.ctx) return;
-    const notes = [659.25, 830.61, 987.77, 1318.51];
-    notes.forEach((freq, i) => {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, this.ctx.currentTime + i * 0.05);
-      
-      gain.gain.setValueAtTime(0, this.ctx.currentTime + i * 0.05);
-      gain.gain.linearRampToValueAtTime(0.06, this.ctx.currentTime + i * 0.05 + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + i * 0.05 + 0.35);
-      
-      osc.start(this.ctx.currentTime + i * 0.05);
-      osc.stop(this.ctx.currentTime + i * 0.05 + 0.35);
+/* ═════════════════ crow-feather particle field ═════════════════ */
+const featherCanvas = document.getElementById('featherCanvas');
+let fCtx = fitCanvas(featherCanvas);
+const feathers = [];
+
+function seedFeathers() {
+  feathers.length = 0;
+  const n = window.innerWidth < 820 ? 28 : 54;
+  for (let i = 0; i < n; i++) {
+    feathers.push({
+      x: Math.random(), y: Math.random(),
+      s: 0.35 + Math.random() * 1.15,
+      vx: 0.18 + Math.random() * 0.5,
+      rot: Math.random() * Math.PI * 2,
+      spin: (Math.random() - 0.5) * 0.02,
+      sway: Math.random() * Math.PI * 2,
+      a: 0.16 + Math.random() * 0.5,
     });
   }
+}
+seedFeathers();
 
-  playSelect() {
-    // Soft tap bubble click
-    if (this.muted || !this.ctx) return;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(450, this.ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(280, this.ctx.currentTime + 0.08);
-    
-    gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.08);
-    
-    osc.start();
-    osc.stop(this.ctx.currentTime + 0.08);
+function drawFeather(ctx, f, w, h, dir, intensity) {
+  const x = f.x * w, y = f.y * h;
+  const len = 22 * f.s * (w / 1280 + 0.55);
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(f.rot + Math.sin(f.sway) * 0.35 + (dir < 0 ? Math.PI : 0));
+  ctx.globalAlpha = f.a * intensity;
+  ctx.fillStyle = '#0d0d10';
+  ctx.strokeStyle = 'rgba(255,43,43,.55)';
+  ctx.lineWidth = 0.7;
+  ctx.beginPath();
+  ctx.moveTo(-len, 0);
+  ctx.quadraticCurveTo(-len * 0.15, -len * 0.42, len, 0);
+  ctx.quadraticCurveTo(-len * 0.15,  len * 0.42, -len, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
+/* ═════════════════ AMATERASU — black flame hem ═════════════════ */
+const amaCanvas = document.getElementById('amaterasuCanvas');
+let amaCtx = fitCanvas(amaCanvas);
+const flames = [];
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let amaPainted = false;
+
+function seedFlames() {
+  flames.length = 0;
+  const n = Math.max(22, Math.round(window.innerWidth / 26));
+  for (let i = 0; i < n; i++) {
+    const depth = Math.random();
+    flames.push({
+      x: (i + Math.random() * 1.1) / n,
+      depth,
+      drift: (Math.random() - 0.5) * 0.05,
+      h: (0.42 + Math.random() * 0.5) * (1.15 - depth * 0.35),
+      w: (0.34 + Math.random() * 0.6) * (0.7 + depth * 0.7),
+      speed: 0.7 + Math.random() * 1.25,
+      lean: (Math.random() - 0.5) * 0.5,
+      phase: Math.random() * Math.PI * 2,
+      seed: Math.random() * 100,
+    });
+  }
+  flames.sort((a, b) => a.depth - b.depth);
+}
+seedFlames();
+
+function flameBlob(f, i, BLOBS, w, h, p, tall, wide) {
+  const u = i / (BLOBS - 1);
+  const baseX = (f.x + Math.sin(p * 0.4 + f.seed) * f.drift) * w;
+  return {
+    u,
+    x: baseX + (f.lean * u + Math.sin(p * 1.7 + u * 3.4 + f.seed) * 0.6 * u) * wide,
+    y: h - Math.pow(u, 0.82) * tall,
+    r: wide * (1 - u * 0.78) + wide * 0.06,
+  };
+}
+
+function drawFlame(ctx, f, w, h, t) {
+  const p = f.phase + t * f.speed;
+  const lick = 0.74 + Math.sin(p) * 0.18 + Math.sin(p * 2.9 + f.seed) * 0.08;
+  const tall = h * f.h * lick;
+  const wide = h * 0.24 * f.w;
+  const near = 0.55 + f.depth * 0.45;
+  const BLOBS = 9;
+
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < BLOBS; i++) {
+    const b = flameBlob(f, i, BLOBS, w, h, p, tall, wide);
+    const r = b.r * 1.28;
+    const heat = Math.pow(1 - b.u, 1.6) * 0.9 + 0.06;
+    const g = ctx.createRadialGradient(b.x, b.y, r * 0.45, b.x, b.y, r);
+    g.addColorStop(0,    `rgba(214,32,44,${0.42 * heat * near})`);
+    g.addColorStop(0.55, `rgba(126,12,30,${0.2 * heat * near})`);
+    g.addColorStop(1,    'rgba(46,0,14,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, r, 0, Math.PI * 2);
+    ctx.fill();
   }
 
-  playSweep() {
-    // Soft background breeze sweep
-    if (this.muted || !this.ctx) return;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(200, this.ctx.currentTime);
-    osc.frequency.linearRampToValueAtTime(400, this.ctx.currentTime + 0.4);
-    
-    gain.gain.setValueAtTime(0, this.ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.03, this.ctx.currentTime + 0.1);
-    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.4);
-    
-    osc.start();
-    osc.stop(this.ctx.currentTime + 0.4);
-  }
-
-  startAmbientMusic() {
-    if (this.muted || !this.ctx) return;
-    
-    const playChord = () => {
-      if (this.muted || !this.ctx) return;
-      
-      const chords = [
-        [261.63, 329.63, 392.00, 493.88], // C Major 7
-        [349.23, 440.00, 523.25, 659.25], // F Major 7
-        [293.66, 349.23, 440.00, 523.25], // D minor 7
-        [329.63, 392.00, 493.88, 587.33]  // E minor 7
-      ];
-      
-      const chord = chords[Math.floor(Math.random() * chords.length)];
-      const duration = 8.0;
-      
-      this.bgGain = this.ctx.createGain();
-      this.bgGain.connect(this.ctx.destination);
-      this.bgGain.gain.setValueAtTime(0, this.ctx.currentTime);
-      this.bgGain.gain.linearRampToValueAtTime(0.04, this.ctx.currentTime + 3.0);
-      this.bgGain.gain.setValueAtTime(0.04, this.ctx.currentTime + duration - 3.0);
-      this.bgGain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + duration);
-      
-      chord.forEach(freq => {
-        const osc = this.ctx.createOscillator();
-        osc.connect(this.bgGain);
-        osc.type = 'triangle'; // Mellow tone
-        osc.frequency.value = freq;
-        osc.start();
-        osc.stop(this.ctx.currentTime + duration);
-        this.activeOscillators.push(osc);
-      });
-      
-      this.bgInterval = setTimeout(() => {
-        this.activeOscillators = [];
-        playChord();
-      }, (duration - 2.5) * 1000);
-    };
-    
-    playChord();
+  ctx.globalCompositeOperation = 'source-over';
+  for (let i = 0; i < BLOBS; i++) {
+    const b = flameBlob(f, i, BLOBS, w, h, p, tall, wide);
+    const a = (0.97 - b.u * 0.42) * near;
+    const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
+    g.addColorStop(0,   `rgba(3,2,4,${a})`);
+    g.addColorStop(0.62, `rgba(6,3,8,${a * 0.8})`);
+    g.addColorStop(1,   'rgba(9,5,11,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx.fill();
   }
 }
 
-const synth = new SereneSynth();
-
-// ==========================================
-// CAROUSEL & EXHIBITION STATE
-// ==========================================
-let activeIndex = 0;
-const totalCards = 7;
-let isAnimating = false;
-let scrollAccumulator = 0;
-const scrollThreshold = 40; // Pixels for wheel/touchpad trigger
-let xpScore = 0;
-
-// ==========================================
-// THREE.JS SCENE SETUP
-// ==========================================
-let scene, camera, renderer;
-let fireflies;
-let exhibitionGroup;
-const models = [];
-let modelContainer;
-
-// ==========================================
-// INIT SERENE EXHIBITION ENGINE
-// ==========================================
-function initEngine() {
-  const canvas = document.getElementById('bg-canvas');
-  
-  // Scene
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xfffbf5); // Cozy warm cream
-  scene.fog = new THREE.FogExp2(0xffebd9, 0.005); // Sunset peach fog
-  
-  // Camera
-  camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
-  camera.position.set(0, 0, 10.5);
-  
-  // Renderer
-  renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: false });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
-  
-  // Lights
-  const ambientLight = new THREE.AmbientLight(0xfff4e6, 1.8);
-  scene.add(ambientLight);
-  
-  const directionalLight1 = new THREE.DirectionalLight(0xffb88c, 1.6); // Warm orange sun
-  directionalLight1.position.set(10, 8, 12);
-  scene.add(directionalLight1);
-  
-  const directionalLight2 = new THREE.DirectionalLight(0xdbe9f6, 0.8); // Soothing cool sky fill
-  directionalLight2.position.set(-10, -5, -5);
-  scene.add(directionalLight2);
-
-  // Group for layout translation
-  exhibitionGroup = new THREE.Group();
-  // Offset 3D meshes to the right on desktop, center on mobile
-  updateGroupPosition();
-  scene.add(exhibitionGroup);
-  
-  // Entities Setup
-  createFireflies(); // Cozy floating golden fireflies
-  createExhibitionModels(); // 6 Geometric sculptures
-  
-  window.addEventListener('resize', onWindowResize);
+function drawEmbers(ctx, w, h, t) {
+  ctx.globalCompositeOperation = 'lighter';
+  const n = 14;
+  for (let i = 0; i < n; i++) {
+    const s = i * 12.9898;
+    const life = (t * (0.22 + (i % 5) * 0.05) + i / n) % 1;
+    const x = ((Math.sin(s) * 0.5 + 0.5) + Math.sin(t * 0.6 + s) * 0.02) * w;
+    const y = h - life * h * 0.95;
+    const a = Math.sin(life * Math.PI) * 0.5;
+    const r = h * 0.018 * (1.4 - life * 0.6);
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, `rgba(255,74,60,${a})`);
+    g.addColorStop(1, 'rgba(120,10,20,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalCompositeOperation = 'source-over';
 }
 
-function updateGroupPosition() {
-  if (window.innerWidth > 1024) {
-    exhibitionGroup.position.set(2.4, 0, 0); // Translate right
-  } else {
-    exhibitionGroup.position.set(0, 1.2, -3); // Translate up & back
+function paintAmaterasu(t) {
+  const w = amaCanvas.width, h = amaCanvas.height;
+  amaCtx.clearRect(0, 0, w, h);
+  for (const f of flames) drawFlame(amaCtx, f, w, h, t);
+  drawEmbers(amaCtx, w, h, t);
+}
+
+/* ═══════════════ ACT II — mouse-tracked eyes ═══════════════ */
+const eyesSection = document.getElementById('eyes');
+const eyeCanvas   = document.getElementById('eyeCanvas');
+const eyeFlare    = document.getElementById('eyeFlare');
+const eyeReadout  = document.getElementById('eyeReadout');
+let eyeCtx = fitCanvas(eyeCanvas);
+
+const GAZE_LUT = [
+  { f: 5,  cx: 613.4 },
+  { f: 4,  cx: 622.5 },
+  { f: 3,  cx: 631.3 },
+  { f: 2,  cx: 645.2 },
+  { f: 1,  cx: 652.4 },
+  { f: 28, cx: 652.5 },
+  { f: 29, cx: 663.4 },
+  { f: 30, cx: 671.4 },
+  { f: 31, cx: 672.7 },
+].map(o => ({ idx: o.f - 1, cx: o.cx }));
+
+let mx = 0.5, my = 0.5;
+let ex = 0.5, ey = 0.5;
+let gazePos = (GAZE_LUT.length - 1) / 2;
+let eyeLastKey = '';
+
+window.addEventListener('pointermove', e => {
+  mx = e.clientX / window.innerWidth;
+  my = e.clientY / window.innerHeight;
+  cursorX = e.clientX; cursorY = e.clientY;
+}, { passive: true });
+
+window.addEventListener('touchmove', e => {
+  const t = e.touches[0];
+  if (!t) return;
+  mx = t.clientX / window.innerWidth;
+  my = t.clientY / window.innerHeight;
+}, { passive: true });
+
+/* ═══════════════ ACT III — ghost cursor + reveal + parallax ═══════════════ */
+const jutsuSection = document.getElementById('jutsu');
+const jutsuReveal  = document.getElementById('jutsuReveal');
+const ghostCanvas  = document.getElementById('ghostCanvas');
+const ghost = createGhostCursor(ghostCanvas, {
+  color: '#ff2b2b',
+  trailLength: 28,
+  brightness: 0.45,
+  edgeIntensity: 0.45,
+});
+
+let jutsuLit = false;
+let revealX = 0.5, revealY = 0.5;
+let revealTX = 0.5, revealTY = 0.5;
+let revealR = 0, revealRT = 420;
+
+function setLit(on) {
+  if (jutsuLit === on) return;
+  jutsuLit = on;
+  jutsuSection.classList.toggle('lit', on);
+  if (!on) ghost.leave();
+}
+
+jutsuSection.addEventListener('pointermove', e => {
+  const r = jutsuSection.getBoundingClientRect();
+  revealTX = clamp((e.clientX - r.left) / Math.max(1, r.width));
+  revealTY = clamp((e.clientY - r.top) / Math.max(1, r.height));
+  ghost.move(revealTX, revealTY, true);
+  setLit(true);
+}, { passive: true });
+
+jutsuSection.addEventListener('pointerleave', () => setLit(false), { passive: true });
+
+document.querySelectorAll('.jutsu .card').forEach(card => {
+  card.addEventListener('pointerenter', () => { revealRT = 580; }, { passive: true });
+  card.addEventListener('pointerleave', () => { revealRT = 420; }, { passive: true });
+});
+
+const pxItems = [...document.querySelectorAll('#jutsu [data-px]')]
+  .map(el => ({ el, speed: parseFloat(el.dataset.px) || 0.2, delay: 0 }));
+
+document.querySelectorAll('#jutsu .card').forEach((el, i) => {
+  pxItems.push({ el, speed: 0.30 + i * 0.06, delay: i * 0.05 });
+});
+document.querySelectorAll('.jutsu__amaterasu').forEach(el => {
+  pxItems.push({ el, speed: -0.22, delay: 0.1 });
+});
+
+pxItems.forEach(it => { it.el.style.opacity = '0'; });
+ghost.resize();
+
+function paintJutsu() {
+  const r = jutsuSection.getBoundingClientRect();
+  const vh = window.innerHeight;
+  if (r.top > vh || r.bottom < 0) return;
+
+  const enter = clamp((vh - r.top) / (vh * 0.9));
+
+  for (const it of pxItems) {
+    const local = clamp((enter - it.delay) / (1 - it.delay || 1));
+    const eased = 1 - Math.pow(1 - local, 3);
+    const rect = it.el.getBoundingClientRect();
+    const centred = (rect.top + rect.height / 2 - vh / 2) / vh;
+    const drift = centred * it.speed * 120;
+    it.el.style.opacity = eased.toFixed(3);
+    it.el.style.transform =
+      `translate3d(0, ${(drift + (1 - eased) * 60).toFixed(1)}px, 0)`;
   }
 }
 
-// 1. FLOATING FIREFLIES
-function createFireflies() {
-  const count = 220;
-  const geometry = new THREE.BufferGeometry();
-  const positions = new Float32Array(count * 3);
-  const colors = new Float32Array(count * 3);
-  
-  for (let i = 0; i < count * 3; i += 3) {
-    positions[i] = (Math.random() - 0.5) * 20;
-    positions[i+1] = (Math.random() - 0.5) * 12;
-    positions[i+2] = (Math.random() - 0.5) * 12;
-    
-    // Warm tones: citrine, gold, peach
-    const seed = Math.random();
-    if (seed < 0.4) {
-      colors[i] = 0.9; colors[i+1] = 0.43; colors[i+2] = 0.32; // Terracotta/coral
-    } else if (seed < 0.8) {
-      colors[i] = 0.88; colors[i+1] = 0.67; colors[i+2] = 0.27; // Soft gold
-    } else {
-      colors[i] = 0.95; colors[i+1] = 0.9; colors[i+2] = 0.85;  // Cream warm white
-    }
-  }
-  
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  
-  const material = new THREE.PointsMaterial({
-    size: 0.16,
-    vertexColors: true,
-    transparent: true,
-    opacity: 0.65,
-    sizeAttenuation: true
-  });
-  
-  fireflies = new THREE.Points(geometry, material);
-  scene.add(fireflies);
+/* ═════════════════════ custom cursor ═════════════════════ */
+const cursorEl = document.getElementById('cursor');
+let cursorX = window.innerWidth / 2, cursorY = window.innerHeight / 2;
+let cx = cursorX, cy = cursorY;
+
+document.querySelectorAll('a, .card, .eyes__sticky, button, input, textarea, .project-test-btn').forEach(el => {
+  el.addEventListener('pointerenter', () => cursorEl.classList.add('hot'));
+  el.addEventListener('pointerleave', () => cursorEl.classList.remove('hot'));
+});
+
+/* ═════════════════════ scroll chrome ═════════════════════ */
+const hint = document.getElementById('hint');
+const railScroll = document.getElementById('railScroll');
+let lastScrollY = window.scrollY;
+let scrollDir = 1, scrollVel = 0;
+
+function readScroll() {
+  const y = window.scrollY;
+  const d = y - lastScrollY;
+  if (Math.abs(d) > 0.4) scrollDir = d > 0 ? 1 : -1;
+  scrollVel = lerp(scrollVel, Math.min(Math.abs(d) / 42, 1), 0.12);
+  lastScrollY = y;
+
+  const doc = document.documentElement.scrollHeight - window.innerHeight;
+  const pct = Math.round((y / (doc || 1)) * 100);
+  railScroll.textContent = `SCROLL ${String(pct).padStart(3, '0')}%`;
+  hint.classList.toggle('hide', y > window.innerHeight * 0.4);
 }
 
-// 2. SIX GEOMETRIC SCULPTURES
-function createExhibitionModels() {
-  modelContainer = new THREE.Group();
-  exhibitionGroup.add(modelContainer);
-  
-  // Model Materials
-  const ivoryMat = new THREE.MeshStandardMaterial({ color: 0xfefcf8, roughness: 0.7, metalness: 0.05 });
-  const coralMat = new THREE.MeshStandardMaterial({ color: 0xe76f51, roughness: 0.4, metalness: 0.2 });
-  const amberMat = new THREE.MeshStandardMaterial({ color: 0xe09f68, roughness: 0.5, metalness: 0.3 });
-  const sageMat = new THREE.MeshStandardMaterial({ color: 0x8c9a70, roughness: 0.6, metalness: 0.1 });
-  const goldMat = new THREE.MeshStandardMaterial({ color: 0xe2ab46, roughness: 0.3, metalness: 0.6 });
-  const tealMat = new THREE.MeshStandardMaterial({ color: 0x5fa8ad, roughness: 0.3, metalness: 0.4 });
+/* ═══════════════════════════════════════════════════════════
+   STORM — lightning flashes + synthesised thunder
+   ═══════════════════════════════════════════════════════════ */
+const STRIKE_GAP   = 500;
+const STRIKE_EVERY = [3200, 7000];
 
-  // --- MODEL 0: CORE HUB (Rotating Torus Knot Sculpture) ---
-  const model0 = new THREE.Group();
-  const main0 = new THREE.Mesh(new THREE.TorusKnotGeometry(1.6, 0.46, 64, 8, 3, 4), coralMat);
-  model0.add(main0);
-  
-  // Floating orbital ring
-  const ring0 = new THREE.Mesh(new THREE.TorusGeometry(3.0, 0.08, 8, 48), ivoryMat);
-  ring0.rotateX(Math.PI / 2.5);
-  model0.add(ring0);
-  
-  modelContainer.add(model0);
-  models.push(model0);
+const stormFlash = document.getElementById('stormFlash');
+const stormBolt  = document.getElementById('stormBolt');
+const boltPath   = document.getElementById('boltPath');
+const boltGlow   = document.getElementById('boltGlow');
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // --- MODEL 1: EDUCATION (Cylinder stacks & Orbiting Rings) ---
-  const model1 = new THREE.Group();
-  const stack1 = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 3.2, 5), ivoryMat);
-  stack1.rotateX(Math.PI / 8);
-  model1.add(stack1);
-  
-  const ring1a = new THREE.Mesh(new THREE.TorusGeometry(2.3, 0.08, 6, 32), goldMat);
-  ring1a.rotateX(Math.PI / 3);
-  const ring1b = new THREE.Mesh(new THREE.TorusGeometry(2.8, 0.06, 6, 32), tealMat);
-  ring1b.rotateY(Math.PI / 4);
-  model1.add(ring1a);
-  model1.add(ring1b);
-  
-  modelContainer.add(model1);
-  models.push(model1);
+let audioCtx = null, thunderOn = false;
 
-  // --- MODEL 2: SKILLS (Floating Cubes Ring) ---
-  const model2 = new THREE.Group();
-  const center2 = new THREE.Mesh(new THREE.IcosahedronGeometry(1.3, 1), sageMat);
-  model2.add(center2);
-  
-  const ringGroup2 = new THREE.Group();
-  const skillCount = 10;
-  for (let i = 0; i < skillCount; i++) {
-    const cubeGeo = new THREE.BoxGeometry(0.45, 0.45, 0.45);
-    const mat = i % 3 === 0 ? coralMat : (i % 3 === 1 ? goldMat : ivoryMat);
-    const cube = new THREE.Mesh(cubeGeo, mat);
-    
-    const angle = (i / skillCount) * Math.PI * 2;
-    cube.position.set(Math.cos(angle) * 2.5, 0, Math.sin(angle) * 2.5);
-    cube.rotation.set(Math.random() * 2, Math.random() * 2, 0);
-    ringGroup2.add(cube);
-  }
-  model2.add(ringGroup2);
-  model2.userData = { ringGroup: ringGroup2 };
-  
-  modelContainer.add(model2);
-  models.push(model2);
-
-  // --- MODEL 3: PROJECTS (Terracotta obelisks) ---
-  const model3 = new THREE.Group();
-  const obeliskGeo = new THREE.BoxGeometry(0.7, 3.4, 0.7);
-  
-  const ob1 = new THREE.Mesh(obeliskGeo, coralMat);
-  ob1.position.set(-1.0, 0, 0);
-  const ob2 = new THREE.Mesh(obeliskGeo, amberMat);
-  ob2.position.set(0, 0.4, -0.6);
-  const ob3 = new THREE.Mesh(obeliskGeo, ivoryMat);
-  ob3.position.set(1.0, -0.2, 0.4);
-  
-  model3.add(ob1);
-  model3.add(ob2);
-  model3.add(ob3);
-  model3.userData = { obs: [ob1, ob2, ob3] };
-  
-  modelContainer.add(model3);
-  models.push(model3);
-
-  // --- MODEL 4: CERTIFICATIONS (Rotating Prism) ---
-  const model4 = new THREE.Group();
-  const prismGeo = new THREE.OctahedronGeometry(1.8, 0);
-  const main4 = new THREE.Mesh(prismGeo, tealMat);
-  model4.add(main4);
-  
-  const ring4 = new THREE.Mesh(new THREE.TorusGeometry(2.6, 0.08, 8, 48), ivoryMat);
-  ring4.rotateY(Math.PI / 2);
-  model4.add(ring4);
-  
-  modelContainer.add(model4);
-  models.push(model4);
-
-  // --- MODEL 5: EXTRA-CURRICULAR (Floating Helix Spiral & Research Core) ---
-  const model5 = new THREE.Group();
-  const spiralGroup = new THREE.Group();
-  const spiralCount = 40;
-  for (let i = 0; i < spiralCount; i++) {
-    const t = i / spiralCount;
-    const angle = t * Math.PI * 6; // 3 full turns
-    const y = (t - 0.5) * 3; // spread vertically
-    const radius = 1.3 - Math.abs(t - 0.5) * 0.4; // tapered spiral
-    
-    const nodeGeo = new THREE.SphereGeometry(0.12, 8, 8);
-    const nodeMat = i % 2 === 0 ? coralMat : sageMat;
-    const node = new THREE.Mesh(nodeGeo, nodeMat);
-    node.position.set(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
-    spiralGroup.add(node);
-  }
-  model5.add(spiralGroup);
-  
-  // Center research crystal (for deepfake paper presentation)
-  const core5 = new THREE.Mesh(new THREE.DodecahedronGeometry(0.7, 0), goldMat);
-  model5.add(core5);
-  model5.userData = { spiral: spiralGroup, core: core5 };
-  
-  modelContainer.add(model5);
-  models.push(model5);
-
-  // --- MODEL 6: CONTACT (Gyro Rings) ---
-  const model6 = new THREE.Group();
-  const core6 = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 16), goldMat);
-  model6.add(core6);
-  
-  const gyro1 = new THREE.Mesh(new THREE.TorusGeometry(1.8, 0.12, 8, 48), amberMat);
-  const gyro2 = new THREE.Mesh(new THREE.TorusGeometry(2.3, 0.08, 8, 48), coralMat);
-  const gyro3 = new THREE.Mesh(new THREE.TorusGeometry(2.8, 0.06, 8, 48), ivoryMat);
-  
-  model6.add(gyro1);
-  model6.add(gyro2);
-  model6.add(gyro3);
-  model6.userData = { gyros: [gyro1, gyro2, gyro3] };
-  
-  modelContainer.add(model6);
-  models.push(model6);
-
-  // Initialize scale and position (only active index visible)
-  models.forEach((model, index) => {
-    if (index === activeIndex) {
-      model.scale.set(1, 1, 1);
-      model.position.set(0, 0, 0);
-    } else {
-      model.scale.set(0.001, 0.001, 0.001);
-      model.position.set(0, -2, -1);
-    }
-  });
+function initAudio() {
+  if (audioCtx) return audioCtx;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return null;
+  audioCtx = new AC();
+  return audioCtx;
 }
 
-function onWindowResize() {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  updateGroupPosition();
-}
+function playThunder(power = 1) {
+  if (!thunderOn) return;
+  const ctx = initAudio();
+  if (!ctx || ctx.state === 'suspended') return;
 
-// ==========================================
-// CARD NAVIGATION CAROUSEL CONTROLLER
-// ==========================================
-function goToCard(index) {
-  if (index === activeIndex || isAnimating || index < 0 || index >= totalCards) return;
-  
-  isAnimating = true;
-  synth.playSelect();
-  
-  const oldIndex = activeIndex;
-  activeIndex = index;
-  
-  // 1. Update HTML Cards
-  const cards = document.querySelectorAll('.exhibition-card');
-  cards[oldIndex].classList.remove('active');
-  
-  setTimeout(() => {
-    cards[activeIndex].classList.add('active');
-  }, 250);
+  const now = ctx.currentTime;
+  const dur = 2.2 + Math.random() * 2.4 * power;
 
-  // 2. Update Header Tabs
-  document.querySelectorAll('.nav-link-btn').forEach(btn => {
-    const idx = parseInt(btn.getAttribute('data-index'));
-    if (idx === activeIndex) btn.classList.add('active');
-    else btn.classList.remove('active');
-  });
-
-  // 3. Update Dot Indicators
-  document.querySelectorAll('.dot-indicator').forEach(dot => {
-    const idx = parseInt(dot.getAttribute('data-index'));
-    if (idx === activeIndex) dot.classList.add('active');
-    else dot.classList.remove('active');
-  });
-
-  // 4. Update Footer Status
-  const logEl = document.getElementById('status-log');
-  if (logEl) {
-    logEl.innerHTML = SECTOR_LOGS[activeIndex];
+  const frames = Math.floor(ctx.sampleRate * dur);
+  const buf = ctx.createBuffer(1, frames, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  let last = 0;
+  for (let i = 0; i < frames; i++) {
+    const white = Math.random() * 2 - 1;
+    last = (last + 0.02 * white) / 1.02;
+    d[i] = last * 3.2;
   }
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
 
-  // 5. Animate 3D Model Transitions
-  const oldModel = models[oldIndex];
-  const newModel = models[activeIndex];
-  
-  // Old model retreats
-  gsap.to(oldModel.scale, {
-    x: 0.001, y: 0.001, z: 0.001,
-    duration: 0.45,
-    ease: 'power2.in',
-    onComplete: () => {
-      oldModel.position.set(0, -2, -1);
-    }
-  });
-  
-  gsap.to(oldModel.position, {
-    y: -2, z: -1,
-    duration: 0.45,
-    ease: 'power2.in'
-  });
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.setValueAtTime(1400 * power, now);
+  lp.frequency.exponentialRampToValueAtTime(90, now + dur);
 
-  // New model arrives
-  newModel.position.set(0, 2, -1); // arrive from top
-  gsap.to(newModel.scale, {
-    x: 1, y: 1, z: 1,
-    duration: 0.7,
-    delay: 0.25,
-    ease: 'power2.out',
-    onComplete: () => {
-      isAnimating = false;
-    }
-  });
-  
-  gsap.to(newModel.position, {
-    x: 0, y: 0, z: 0,
-    duration: 0.7,
-    delay: 0.25,
-    ease: 'power2.out'
-  });
+  const hp = ctx.createBiquadFilter();
+  hp.type = 'highpass'; hp.frequency.value = 28;
+
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.55 * power, now + 0.04);
+  gain.gain.exponentialRampToValueAtTime(0.16 * power, now + 0.5);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+  const sub = ctx.createOscillator();
+  sub.type = 'sine';
+  sub.frequency.setValueAtTime(58, now);
+  sub.frequency.exponentialRampToValueAtTime(24, now + dur * 0.8);
+  const subGain = ctx.createGain();
+  subGain.gain.setValueAtTime(0.0001, now);
+  subGain.gain.exponentialRampToValueAtTime(0.32 * power, now + 0.12);
+  subGain.gain.exponentialRampToValueAtTime(0.0001, now + dur * 0.85);
+
+  src.connect(hp); hp.connect(lp); lp.connect(gain); gain.connect(ctx.destination);
+  sub.connect(subGain); subGain.connect(ctx.destination);
+
+  src.start(now); src.stop(now + dur);
+  sub.start(now); sub.stop(now + dur);
 }
 
-function handleNext() {
-  if (activeIndex < totalCards - 1) {
-    goToCard(activeIndex + 1);
-  } else {
-    goToCard(0); // Loop back
-  }
-}
+function makeBolt() {
+  const x0 = 80 + Math.random() * 840;
+  let x = x0, y = 0;
+  let dPath = `M ${x.toFixed(0)} 0`;
+  const steps = 14 + Math.floor(Math.random() * 8);
+  const forks = [];
+  const drift = (Math.random() - 0.5) * 40;
 
-function handlePrev() {
-  if (activeIndex > 0) {
-    goToCard(activeIndex - 1);
-  } else {
-    goToCard(totalCards - 1); // Loop to end
-  }
-}
-
-// ==========================================
-// SCROLL / WHEEL INTERACTION (ACCESSIBILITY)
-// ==========================================
-function setupScrollEvent() {
-  window.addEventListener('wheel', (e) => {
-    // Check if scrolling inside a scrollable detail card panel
-    const path = e.composedPath();
-    const isScrollingScrollablePanel = path.some(el => el.classList && el.classList.contains('scrollable'));
-    if (isScrollingScrollablePanel) return; // Allow normal scroll text
-
-    e.preventDefault();
-    
-    scrollAccumulator += e.deltaY;
-    
-    if (Math.abs(scrollAccumulator) >= scrollThreshold) {
-      if (scrollAccumulator > 0) {
-        handleNext();
-      } else {
-        handlePrev();
+  for (let i = 1; i <= steps; i++) {
+    y = (i / steps) * (620 + Math.random() * 300);
+    x += drift + (Math.random() - 0.5) * 130;
+    x = Math.max(20, Math.min(980, x));
+    dPath += ` L ${x.toFixed(0)} ${y.toFixed(0)}`;
+    if (Math.random() < 0.30 && i > 3) {
+      let fx = x, fy = y, f = `M ${x.toFixed(0)} ${y.toFixed(0)}`;
+      const fs = 2 + Math.floor(Math.random() * 4);
+      for (let k = 0; k < fs; k++) {
+        fx += (Math.random() - 0.5) * 150;
+        fy += 40 + Math.random() * 80;
+        f += ` L ${fx.toFixed(0)} ${fy.toFixed(0)}`;
       }
-      scrollAccumulator = 0;
+      forks.push(f);
     }
-  }, { passive: false });
-
-  // Swipe Gestures for Mobile Touchscreens
-  let touchStartX = 0;
-  window.addEventListener('touchstart', (e) => {
-    touchStartX = e.touches[0].clientX;
-  });
-  
-  window.addEventListener('touchend', (e) => {
-    const touchEndX = e.changedTouches[0].clientX;
-    const diff = touchStartX - touchEndX;
-    
-    if (Math.abs(diff) > 50) {
-      if (diff > 0) handleNext();
-      else handlePrev();
-    }
-  });
-}
-
-// ==========================================
-// SKILLS INTERACTIVE SECTORS
-// ==========================================
-function setupSkillsHover() {
-  document.querySelectorAll('.skill-pill').forEach(pill => {
-    pill.addEventListener('mouseenter', (e) => {
-      const skillName = e.target.getAttribute('data-name');
-      highlightSkillModelCube(skillName);
-    });
-    
-    pill.addEventListener('mouseleave', () => {
-      resetSkillModelCubes();
-    });
-  });
-}
-
-function highlightSkillModelCube(skillName) {
-  const model2 = models[2];
-  const cubes = model2.userData.ringGroup.children;
-  
-  cubes.forEach((cube, i) => {
-    // Scale up the matched index cube in 3D carousel
-    if (i === Math.abs(hashCode(skillName)) % cubes.length) {
-      gsap.to(cube.scale, { x: 2.0, y: 2.0, z: 2.0, duration: 0.3 });
-      cube.material.emissive.setHex(0xffffff);
-      cube.material.emissiveIntensity = 0.2;
-    } else {
-      gsap.to(cube.scale, { x: 0.6, y: 0.6, z: 0.6, duration: 0.3 });
-      cube.material.opacity = 0.4;
-      cube.material.transparent = true;
-    }
-  });
-}
-
-function resetSkillModelCubes() {
-  const model2 = models[2];
-  const cubes = model2.userData.ringGroup.children;
-  
-  cubes.forEach(cube => {
-    gsap.to(cube.scale, { x: 1, y: 1, z: 1, duration: 0.3 });
-    cube.material.emissive.setHex(0x000000);
-    cube.material.emissiveIntensity = 0;
-    cube.material.opacity = 1.0;
-    cube.material.transparent = false;
-  });
-}
-
-function hashCode(str) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
   }
-  return hash;
+  return { d: dPath + ' ' + forks.join(' '), x: x0 / 1000 };
 }
 
-// ==========================================
-// RESUME INTERACTIVE UTILITIES (IN-CARD GAMES)
-// ==========================================
-function setupCardInteractiveActions() {
-  // 1. Education Quiz
+let stormTimer = null;
+
+function flicker(el, peak, ms) {
+  el.style.transition = 'none';
+  el.style.opacity = String(peak);
+  requestAnimationFrame(() => {
+    el.style.transition = `opacity ${ms}ms cubic-bezier(.22,1,.36,1)`;
+    el.style.opacity = '0';
+  });
+}
+
+function strike() {
+  const heavy = Math.random() < 0.55;
+  const power = heavy ? 1 : 0.55 + Math.random() * 0.25;
+
+  if (heavy) {
+    const b = makeBolt();
+    boltPath.setAttribute('d', b.d);
+    boltGlow.setAttribute('d', b.d);
+    stormFlash.style.setProperty('--bx', (b.x * 100).toFixed(0) + '%');
+    flicker(stormBolt, 1, 190);
+  } else {
+    stormFlash.style.setProperty('--bx', (15 + Math.random() * 70).toFixed(0) + '%');
+  }
+
+  flicker(stormFlash, heavy ? 0.9 : 0.42, heavy ? 380 : 300);
+
+  const beats = heavy ? 1 + Math.floor(Math.random() * 2) : 1;
+  for (let i = 1; i <= beats; i++) {
+    setTimeout(() => {
+      flicker(stormFlash, (heavy ? 0.7 : 0.3) * (1 - i * 0.2), 260);
+      if (heavy && i === 1) flicker(stormBolt, 0.75, 140);
+    }, STRIKE_GAP * i);
+  }
+
+  setTimeout(() => playThunder(power), heavy ? 260 : 620);
+
+  const [lo, hi] = STRIKE_EVERY;
+  stormTimer = setTimeout(strike, lo + Math.random() * (hi - lo));
+}
+
+if (!reducedMotion) stormTimer = setTimeout(strike, 1800);
+
+const soundToggle = document.getElementById('soundToggle');
+const soundState  = document.getElementById('soundState');
+soundToggle.addEventListener('click', async () => {
+  thunderOn = !thunderOn;
+  soundToggle.setAttribute('aria-pressed', String(thunderOn));
+  soundState.textContent = thunderOn ? 'ON' : 'OFF';
+  if (thunderOn) {
+    const ctx = initAudio();
+    if (ctx && ctx.state === 'suspended') await ctx.resume();
+    playThunder(0.7);
+  }
+});
+
+/* ═════════════════════ RESUME INTERACTIVE UTILITIES ═════════════════════ */
+function setupResumeInteractions() {
+  // 1. Technical Quiz (SMOTE)
   const quizBox = document.getElementById('edu-quiz-box');
   const question = {
-    q: "Which language uses SQLDelight for local Multiplatform database persistence?",
-    opts: ["Java", "Kotlin", "Python", "Flask"],
-    correct: 1
+    q: "Which technique was used to handle class imbalance in the Predictive Maintenance system?",
+    opts: ["SMOTE", "FAISS", "FastAPI", "TensorFlow"],
+    correct: 0
   };
-  
+
   if (quizBox) {
     quizBox.innerHTML = `
-      <div class="quiz-question" style="font-weight:700; margin-top:8px;">${question.q}</div>
-      <div class="quiz-opts" style="display:flex; flex-direction:column; gap:8px;">
+      <div class="quiz-question" style="font-weight:600; margin-top:8px;">${question.q}</div>
+      <div class="quiz-opts" style="display:flex; flex-direction:column; gap:6px;">
         ${question.opts.map((opt, i) => `<button class="quiz-opt-btn" data-idx="${i}">${opt}</button>`).join('')}
       </div>
       <div id="quiz-msg" style="margin-top:8px; font-weight:bold; font-size:11px; min-height:16px;"></div>
     `;
-    
+
     quizBox.querySelectorAll('.quiz-opt-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', () => {
         const idx = parseInt(btn.getAttribute('data-idx'));
         const msg = document.getElementById('quiz-msg');
-        
+        const card = quizBox.closest('.card');
+
         if (idx === question.correct) {
-          btn.classList.add('correct');
-          msg.innerHTML = '<span class="glow-green">CORRECT. DATA ARCHIVE UNLOCKED. +150 XP</span>';
-          synth.playChime();
-          addScore(150);
+          quizBox.querySelectorAll('.quiz-opt-btn').forEach(b => {
+            b.disabled = true;
+            if (parseInt(b.getAttribute('data-idx')) === question.correct) {
+              b.classList.add('correct');
+            }
+          });
+          msg.innerHTML = '<span class="glow-green">CORRECT. DATA LEDGER UNLOCKED. +150 XP</span>';
           
-          // Animate the 3D education stack
-          gsap.to(models[1].rotation, { y: Math.PI * 2, duration: 1.0, ease: 'power2.out' });
+          // Animate uchiwa mark spinning & visual card response
+          gsap.to('.uchiwa', { rotation: '+=360', duration: 1.5, ease: 'power2.out' });
+          gsap.to(card, { scale: 1.02, duration: 0.2, yoyo: true, repeat: 1, ease: 'power1.inOut' });
         } else {
           btn.classList.add('incorrect');
-          msg.innerHTML = '<span class="glow-cyan">INCORRECT. RE-TUNING SYSTEM PARAMS.</span>';
-          synth.playSelect();
+          msg.innerHTML = '<span class="glow-cyan">INCORRECT. RE-TUNING MODEL PARAMETERS.</span>';
         }
       });
     });
   }
 
   // 2. Project Builders
-  document.getElementById('run-prushtha-btn').addEventListener('click', (e) => {
-    e.target.disabled = true;
-    e.target.innerHTML = 'Compiling Spring Boot + MinIO backend...';
-    
-    // Animate project obelisk in 3D
-    const ob = models[3].userData.obs[0];
-    gsap.to(ob.scale, { y: 1.5, duration: 0.6, yoyo: true, repeat: 1 });
-    
-    setTimeout(() => {
-      e.target.innerHTML = 'COMPILE SUCCESSFUL. API LIVE. XP +100';
-      synth.playChime();
-      addScore(100);
-    }, 1200);
-  });
+  const regumindBtn = document.getElementById('run-regumind-btn');
+  if (regumindBtn) {
+    regumindBtn.addEventListener('click', (e) => {
+      e.target.disabled = true;
+      e.target.innerHTML = 'Parsing PDFs & generating FAISS vector index...';
+      
+      gsap.to('.uchiwa', { rotation: '+=360', duration: 1.5, ease: 'power2.out' });
 
-  document.getElementById('run-ml-btn').addEventListener('click', (e) => {
-    e.target.disabled = true;
-    e.target.innerHTML = 'Fitting Random Forest + SMOTE...';
-    
-    const ob = models[3].userData.obs[1];
-    gsap.to(ob.rotation, { y: Math.PI, duration: 1.0 });
-    
-    setTimeout(() => {
-      e.target.innerHTML = 'ACCURACY: 98%. FLASK API READY. XP +100';
-      synth.playChime();
-      addScore(100);
-    }, 1400);
-  });
+      setTimeout(() => {
+        e.target.innerHTML = 'FAISS VECTOR INDEX INGESTED. RAG LIVE. XP +100';
+      }, 1200);
+    });
+  }
 
-  document.getElementById('run-speakx-btn').addEventListener('click', (e) => {
-    e.target.disabled = true;
-    e.target.innerHTML = 'Activating NLP speech streams...';
-    
-    const ob = models[3].userData.obs[2];
-    gsap.to(ob.position, { y: 1.0, duration: 0.4, yoyo: true, repeat: 1 });
-    
-    setTimeout(() => {
-      e.target.innerHTML = 'LOW-LATENCY CLIENT PIPELINES SECURED. XP +100';
-      synth.playChime();
-      addScore(100);
-    }, 1200);
-  });
+  const mlBtn = document.getElementById('run-ml-btn');
+  if (mlBtn) {
+    mlBtn.addEventListener('click', (e) => {
+      e.target.disabled = true;
+      e.target.innerHTML = 'Fitting Random Forest + SMOTE...';
+
+      gsap.to('.uchiwa', { rotation: '+=360', duration: 1.5, ease: 'power2.out' });
+
+      setTimeout(() => {
+        e.target.innerHTML = 'ACCURACY: 98%. FLASK API READY. XP +100';
+      }, 1400);
+    });
+  }
 
   // 3. Credential Sweep Scanner
-  document.getElementById('scan-certs-btn').addEventListener('click', (e) => {
-    e.target.disabled = true;
-    e.target.innerHTML = 'Validating cryptographic key signatures...';
-    
-    const prism = models[4];
-    gsap.to(prism.rotation, { y: Math.PI * 4, duration: 2.0 });
-    
-    const status = document.getElementById('scan-certs-status');
-    status.innerHTML = '> CONNECTING TO REGISTRY GATEWAY...';
-    synth.playSweep();
-    
-    setTimeout(() => {
-      status.innerHTML = '> IIT Bombay Python Certificate: VALID<br>> Deloitte Telemetry simulation: VALID<br>> Oracle Database structure: VALID';
-      e.target.innerHTML = 'VERIFICATION INTEGRITY: SECURE. XP +200';
-      synth.playChime();
-      addScore(200);
-    }, 1500);
-  });
+  const scanBtn = document.getElementById('scan-certs-btn');
+  if (scanBtn) {
+    scanBtn.addEventListener('click', (e) => {
+      e.target.disabled = true;
+      e.target.innerHTML = 'Validating cryptographic key signatures...';
+
+      const status = document.getElementById('scan-certs-status');
+      status.innerHTML = '> CONNECTING TO REGISTRY GATEWAY...';
+      gsap.to('.uchiwa', { rotation: '+=360', duration: 1.5, ease: 'power2.out' });
+
+      setTimeout(() => {
+        status.innerHTML = '> IIT Bombay Python Certificate: VALID<br>> Deloitte Telemetry simulation: VALID<br>> Oracle Database structure: VALID';
+        e.target.innerHTML = 'VERIFICATION INTEGRITY: SECURE. XP +200';
+      }, 1500);
+    });
+  }
 
   // 4. Contact Signal Submission
-  document.getElementById('contact-transmission-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const btn = e.target.querySelector('.transmit-btn');
-    btn.disabled = true;
-    btn.innerHTML = 'BEAMING HARMONIC FREQUENCIES...';
-    
-    // Spin gyro rings rapidly
-    const gyros = models[6].userData.gyros;
-    gsap.to(gyros[0].rotation, { x: Math.PI * 6, duration: 1.5 });
-    gsap.to(gyros[1].rotation, { y: Math.PI * 6, duration: 1.5 });
-    gsap.to(gyros[2].rotation, { z: Math.PI * 6, duration: 1.5 });
-    
-    synth.playSweep();
-    
-    setTimeout(() => {
-      btn.innerHTML = 'TRANSMISSION ANCHORED!';
-      document.getElementById('transmission-status').innerHTML = `> Light signal dispatched successfully! Thank you, ${document.getElementById('c-name').value}. XP +300 logged.`;
-      synth.playChime();
-      addScore(300);
-    }, 1500);
-  });
-}
+  const contactForm = document.getElementById('contact-transmission-form');
+  if (contactForm) {
+    contactForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const btn = contactForm.querySelector('.transmit-btn');
+      btn.disabled = true;
+      btn.innerHTML = 'BEAMING HARMONIC FREQUENCIES...';
 
-function addScore(points) {
-  xpScore += points;
-  const statusLog = document.getElementById('status-log');
-  if (statusLog) {
-    statusLog.innerHTML = `> Action verified. XP score increased: +${points} XP (Total: ${xpScore} XP)`;
-  }
-}
+      gsap.to('.uchiwa', { rotation: '+=360', duration: 1.5, ease: 'power2.out' });
 
-// ==========================================
-// MOUSE INTERACTIVE ROTATIONS (EXHIBIT VIEW)
-// ==========================================
-let targetRotationX = 0;
-let targetRotationY = 0;
-let mouseX = 0;
-let mouseY = 0;
-
-window.addEventListener('mousemove', (e) => {
-  mouseX = (e.clientX / window.innerWidth) - 0.5;
-  mouseY = (e.clientY / window.innerHeight) - 0.5;
-});
-
-// ==========================================
-// MAIN LOOP & ANIMATIONS
-// ==========================================
-function animate() {
-  requestAnimationFrame(animate);
-  
-  // 1. Slow drift floating fireflies
-  if (fireflies) {
-    const time = Date.now() * 0.0003;
-    const positions = fireflies.geometry.attributes.position.array;
-    const count = positions.length;
-    for (let i = 0; i < count; i += 3) {
-      positions[i+1] += Math.sin(time + i) * 0.005; // float Y
-    }
-    fireflies.geometry.attributes.position.needsUpdate = true;
-  }
-  
-  // 2. Continuous rotation of models
-  if (models[0]) models[0].rotation.y += 0.005;
-  if (models[1]) {
-    models[1].rotation.y += 0.004;
-    models[1].children[1].rotation.x += 0.008; // Ring A
-    models[1].children[2].rotation.y -= 0.006; // Ring B
-  }
-  if (models[2]) {
-    models[2].rotation.y += 0.002;
-    models[2].userData.ringGroup.rotation.y += 0.006;
-  }
-  if (models[3]) {
-    models[3].rotation.y += 0.003;
-  }
-  if (models[4]) {
-    models[4].rotation.x += 0.005;
-    models[4].rotation.y += 0.005;
-    models[4].children[1].rotation.x += 0.006; // Ring
-  }
-  if (models[5]) {
-    models[5].userData.spiral.rotation.y += 0.01;
-    models[5].userData.core.rotation.y -= 0.005;
-  }
-  if (models[6]) {
-    const gyros = models[6].userData.gyros;
-    gyros[0].rotation.x += 0.008;
-    gyros[1].rotation.y += 0.006;
-    gyros[2].rotation.z += 0.004;
-  }
-  
-  // 3. Mild mouse pointer parallax rotation
-  if (modelContainer) {
-    targetRotationY = mouseX * 1.2;
-    targetRotationX = mouseY * 0.8;
-    modelContainer.rotation.y += (targetRotationY - modelContainer.rotation.y) * 0.06;
-    modelContainer.rotation.x += (targetRotationX - modelContainer.rotation.x) * 0.06;
-  }
-  
-  renderer.render(scene, camera);
-}
-
-// ==========================================
-// INITIALIZATION AND LOAD SCREEN
-// ==========================================
-function setupControls() {
-  // Arrow buttons
-  document.getElementById('prev-arrow').addEventListener('click', handlePrev);
-  document.getElementById('next-arrow').addEventListener('click', handleNext);
-  
-  // Header Tabs
-  document.querySelectorAll('.nav-link-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const idx = parseInt(e.target.getAttribute('data-index'));
-      goToCard(idx);
-    });
-  });
-
-  // Bottom indicator dots
-  document.querySelectorAll('.dot-indicator').forEach(dot => {
-    dot.addEventListener('click', (e) => {
-      const idx = parseInt(e.target.getAttribute('data-index'));
-      goToCard(idx);
-    });
-  });
-
-  // Sound toggle button
-  const soundToggle = document.getElementById('sound-toggle');
-  soundToggle.addEventListener('click', () => {
-    synth.init();
-    const isMuted = synth.toggleMute();
-    soundToggle.innerHTML = isMuted ? '🔇' : '🔊';
-  });
-  
-  setupScrollEvent();
-  setupSkillsHover();
-  setupCardInteractiveActions();
-}
-
-function simulateLoader() {
-  const loadingPct = document.getElementById('loading-pct');
-  const loadingBar = document.getElementById('loading-bar');
-  const onboarding = document.getElementById('onboarding-controls');
-  const loaderProgress = document.querySelector('.loading-progress-box');
-  
-  let pct = 0;
-  const interval = setInterval(() => {
-    pct += Math.floor(Math.random() * 8) + 4;
-    if (pct >= 100) {
-      pct = 100;
-      clearInterval(interval);
       setTimeout(() => {
-        loaderProgress.classList.add('hidden');
-        onboarding.classList.remove('hidden');
-      }, 300);
-    }
-    loadingPct.innerHTML = `${pct}%`;
-    loadingBar.style.width = `${pct}%`;
-  }, 50);
+        btn.innerHTML = 'TRANSMISSION ANCHORED!';
+        document.getElementById('transmission-status').innerHTML = `> Light signal dispatched successfully! Thank you, ${document.getElementById('c-name').value}. XP +300 logged.`;
+        document.getElementById('transmission-status').className = 'glow-green';
+      }, 1500);
+    });
+  }
 }
 
-document.getElementById('start-game-btn').addEventListener('click', () => {
-  synth.init();
-  document.getElementById('loading-screen').classList.add('hidden');
-  synth.playChime();
+/* ═════════════════════ resize ═════════════════════ */
+function resizeAll() {
+  mainCtx = fitCanvas(mainCanvas);
+  fCtx    = fitCanvas(featherCanvas);
+  eyeCtx  = fitCanvas(eyeCanvas);
+  amaCtx  = fitCanvas(amaCanvas);
+  lastDrawn = -1; eyeLastKey = '';
+  seedFeathers();
+  seedFlames(); amaPainted = false;
+  ghost.resize();
+}
+let rt;
+window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(resizeAll, 140); });
+
+/* ═════════════════════ main loop ═════════════════════ */
+function tick() {
+  readScroll();
+  readScrub();
+
+  if (syncSize(mainCanvas) || syncSize(eyeCanvas) ||
+      syncSize(featherCanvas) || syncSize(amaCanvas)) resizeAll();
+
+  if (!reduceMotion) paintAmaterasu(performance.now() / 1000);
+  else if (!amaPainted) { paintAmaterasu(0); amaPainted = true; }
+
+  /* — Act I: scrubbed frames — */
+  frameShown = lerp(frameShown, frameTarget, 0.14);
+  const idx = Math.round(clamp(frameShown, 0, MAIN_COUNT - 1));
+  if (idx !== lastDrawn) {
+    const w = mainCanvas.width, h = mainCanvas.height;
+    mainCtx.clearRect(0, 0, w, h);
+    if (drawCover(mainCtx, mainFrames[idx], w, h)) lastDrawn = idx;
+  }
+  paintOverlays(scrubProgress);
+
+  /* — feathers — */
+  const fw = featherCanvas.width, fh = featherCanvas.height;
+  const intensity = clamp((scrubProgress - 0.70) / 0.14) * (0.45 + scrollVel * 0.55);
+  fCtx.clearRect(0, 0, fw, fh);
+  if (intensity > 0.01) {
+    const speed = (0.0009 + scrollVel * 0.006) * scrollDir;
+    for (const f of feathers) {
+      f.x += f.vx * speed;
+      f.y += Math.sin(f.sway) * 0.0006 + f.vx * speed * 0.18;
+      f.sway += 0.02 + f.vx * 0.01;
+      f.rot  += f.spin * (0.3 + scrollVel);
+      if (f.x > 1.15) f.x = -0.15;
+      if (f.x < -0.15) f.x = 1.15;
+      if (f.y > 1.15) f.y = -0.15;
+      if (f.y < -0.15) f.y = 1.15;
+      drawFeather(fCtx, f, fw, fh, scrollDir, intensity);
+    }
+  }
+
+  /* — Act II: gaze follows pointer — */
+  ex = lerp(ex, mx, 0.075);
+  ey = lerp(ey, my, 0.075);
+
+  const eyeRect = eyesSection.getBoundingClientRect();
+  const eyeVisible = eyeRect.top < window.innerHeight && eyeRect.bottom > 0;
+
+  if (eyeVisible) {
+    gazePos = lerp(gazePos, ex * (GAZE_LUT.length - 1), 0.13);
+    const g = clamp(gazePos, 0, GAZE_LUT.length - 1);
+    const i0 = Math.floor(g), i1 = Math.min(i0 + 1, GAZE_LUT.length - 1);
+    const t = g - i0;
+    const key = `${i0}|${t.toFixed(2)}`;
+
+    if (key !== eyeLastKey) {
+      const w = eyeCanvas.width, h = eyeCanvas.height;
+      eyeCtx.clearRect(0, 0, w, h);
+      eyeCtx.globalAlpha = 1;
+      const okA = drawCover(eyeCtx, eyeFrames[GAZE_LUT[i0].idx], w, h, 1.18);
+      if (t > 0.01 && i1 !== i0) {
+        eyeCtx.globalAlpha = t;
+        drawCover(eyeCtx, eyeFrames[GAZE_LUT[i1].idx], w, h, 1.18);
+        eyeCtx.globalAlpha = 1;
+      }
+      if (okA) eyeLastKey = key;
+    }
+
+    eyeFlare.style.setProperty('--mx', (ex * 100).toFixed(1) + '%');
+    eyeFlare.style.setProperty('--my', (ey * 100).toFixed(1) + '%');
+
+    const axis = (ex - 0.5) * 200;
+    const dir = axis < -8 ? 'LEFT' : axis > 8 ? 'RIGHT' : 'CENTER';
+    eyeReadout.textContent =
+      `GAZE ${dir} ${Math.abs(axis).toFixed(1).padStart(4, '0')} / FRAME ` +
+      String(GAZE_LUT[Math.round(g)].idx + 1).padStart(2, '0');
+  }
+
+  /* — Act III — */
+  paintJutsu();
+
+  const jr = jutsuSection.getBoundingClientRect();
+  if (jr.top < window.innerHeight && jr.bottom > 0) {
+    revealX = lerp(revealX, revealTX, 0.13);
+    revealY = lerp(revealY, revealTY, 0.13);
+    revealR = lerp(revealR, jutsuLit ? revealRT : 0, 0.09);
+    const rs = jutsuSection.style;
+    rs.setProperty('--rx', (revealX * 100).toFixed(2) + '%');
+    rs.setProperty('--ry', (revealY * 100).toFixed(2) + '%');
+    rs.setProperty('--r',  revealR.toFixed(0) + 'px');
+    if (ghost.ok && (jutsuLit || revealR > 1)) ghost.render();
+  }
+
+  /* — cursor — */
+  cx = lerp(cx, cursorX, 0.2);
+  cy = lerp(cy, cursorY, 0.2);
+  cursorEl.style.transform = `translate(${cx}px, ${cy}px)`;
+
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+
+/* ═════════════════════ reveals ═════════════════════ */
+document.querySelectorAll(
+  '.quote__jp, .quote blockquote, .quote__mark, .footer__big, .footer__row'
+).forEach((el, i) => {
+  el.setAttribute('data-reveal', '');
+  if (!el.style.getPropertyValue('--i')) el.style.setProperty('--i', i % 4);
 });
 
-window.addEventListener('DOMContentLoaded', () => {
-  initEngine();
-  setupControls();
-  simulateLoader();
-  animate();
-});
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+}, { threshold: 0.18 });
+document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
