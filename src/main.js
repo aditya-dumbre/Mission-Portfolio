@@ -892,16 +892,47 @@ function setupResumeInteractions() {
     contactForm.addEventListener('submit', (e) => {
       e.preventDefault();
       const btn = contactForm.querySelector('.transmit-btn');
+      const statusEl = document.getElementById('transmission-status');
+      const nameVal = document.getElementById('c-name').value;
+      const emailVal = document.getElementById('c-email').value;
+      const msgVal = document.getElementById('c-msg').value;
+
       btn.disabled = true;
       btn.innerHTML = 'BEAMING HARMONIC FREQUENCIES...';
+      statusEl.innerHTML = '> Igniting neural transmitter...';
+      statusEl.className = 'glow-cyan';
 
       gsap.to('.uchiwa', { rotation: '+=360', duration: 1.5, ease: 'power2.out' });
 
-      setTimeout(() => {
+      fetch('https://formsubmit.co/ajax/dumbreaditya97@gmail.com', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          Name: nameVal,
+          Email: emailVal,
+          Message: msgVal,
+          _subject: `New Signal from ${nameVal} (Portfolio)`
+        })
+      })
+      .then(res => {
+        if (!res.ok) throw new Error('Transmission interrupted by network collapse.');
+        return res.json();
+      })
+      .then(() => {
         btn.innerHTML = 'TRANSMISSION ANCHORED!';
-        document.getElementById('transmission-status').innerHTML = `> Light signal dispatched successfully! Thank you, ${document.getElementById('c-name').value}. XP +300 logged.`;
-        document.getElementById('transmission-status').className = 'glow-green';
-      }, 1500);
+        statusEl.innerHTML = `> Light signal dispatched successfully! Thank you, ${nameVal}. XP +300 logged.`;
+        statusEl.className = 'glow-green';
+        contactForm.reset();
+      })
+      .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = 'TRANSMIT';
+        statusEl.innerHTML = `> Failed to transmit: ${err.message || 'Signal lost.'}`;
+        statusEl.className = 'glow-magenta';
+      });
     });
   }
 }
