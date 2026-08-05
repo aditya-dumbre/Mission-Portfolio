@@ -651,14 +651,9 @@ const boltPath = document.getElementById('boltPath');
 const boltGlow = document.getElementById('boltGlow');
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-let thunderOn = false;
-
-function playThunder(power = 1) {
-  if (!thunderOn) return;
-  const audio = new Audio('/assets/audio.wav');
-  audio.volume = Math.min(1, Math.max(0, power));
-  audio.play().catch(e => console.log('Audio play failed:', e));
-}
+let audioOn = false;
+const bgMusic = new Audio('/assets/audio.wav');
+bgMusic.loop = true;
 
 function makeBolt() {
   const x0 = 80 + Math.random() * 840;
@@ -722,7 +717,7 @@ function strike() {
     }, STRIKE_GAP * i);
   }
 
-  setTimeout(() => playThunder(power), heavy ? 260 : 620);
+
 
   const [lo, hi] = STRIKE_EVERY;
   stormTimer = setTimeout(strike, lo + Math.random() * (hi - lo));
@@ -733,11 +728,13 @@ if (!reducedMotion) stormTimer = setTimeout(strike, 1800);
 const soundToggle = document.getElementById('soundToggle');
 const soundState = document.getElementById('soundState');
 soundToggle.addEventListener('click', () => {
-  thunderOn = !thunderOn;
-  soundToggle.setAttribute('aria-pressed', String(thunderOn));
-  soundState.textContent = thunderOn ? 'ON' : 'OFF';
-  if (thunderOn) {
-    playThunder(0.7);
+  audioOn = !audioOn;
+  soundToggle.setAttribute('aria-pressed', String(audioOn));
+  soundState.textContent = audioOn ? 'ON' : 'OFF';
+  if (audioOn) {
+    bgMusic.play().catch(e => console.log('Audio play failed:', e));
+  } else {
+    bgMusic.pause();
   }
 });
 
