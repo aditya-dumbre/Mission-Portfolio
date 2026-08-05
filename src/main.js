@@ -6,10 +6,10 @@ import './style.css';
 import { gsap } from 'gsap';
 
 const MAIN_COUNT = 71;
-const EYE_COUNT  = 51;
+const EYE_COUNT = 51;
 const pad = n => String(n).padStart(3, '0');
 
-const lerp  = (a, b, t) => a + (b - a) * t;
+const lerp = (a, b, t) => a + (b - a) * t;
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 /* fade in over [a,b], hold, fade out over [c,d] */
 const window4 = (p, a, b, c, d) =>
@@ -17,13 +17,13 @@ const window4 = (p, a, b, c, d) =>
 
 /* ───────────────────────── preload ───────────────────────── */
 const mainFrames = [];
-const eyeFrames  = [];
+const eyeFrames = [];
 let loaded = 0;
 const total = MAIN_COUNT + EYE_COUNT;
 
-const loaderEl  = document.getElementById('loader');
+const loaderEl = document.getElementById('loader');
 const loaderFill = document.getElementById('loaderFill');
-const loaderPct  = document.getElementById('loaderPct');
+const loaderPct = document.getElementById('loaderPct');
 
 function load(src, bucket, index) {
   return new Promise(res => {
@@ -43,7 +43,7 @@ function load(src, bucket, index) {
 
 const jobs = [];
 for (let i = 1; i <= MAIN_COUNT; i++) jobs.push(load(`/frames/main/${pad(i)}.jpg`, mainFrames, i - 1));
-for (let i = 1; i <= EYE_COUNT;  i++) jobs.push(load(`/frames/eyes/${pad(i)}.jpg`, eyeFrames,  i - 1));
+for (let i = 1; i <= EYE_COUNT; i++) jobs.push(load(`/frames/eyes/${pad(i)}.jpg`, eyeFrames, i - 1));
 
 Promise.all(jobs).then(() => {
   setTimeout(() => {
@@ -59,7 +59,7 @@ Promise.all(jobs).then(() => {
 /* ─────────────────── canvas cover-draw helper ─────────────────── */
 function fitCanvas(canvas) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const w = Math.round(canvas.offsetWidth  * dpr);
+  const w = Math.round(canvas.offsetWidth * dpr);
   const h = Math.round(canvas.offsetHeight * dpr);
   if (canvas.width !== w || canvas.height !== h) {
     canvas.width = w; canvas.height = h;
@@ -90,21 +90,21 @@ function drawCover(ctx, img, cw, ch, maxUp = 2.0) {
    GHOST CURSOR (Raw WebGL fbm-smoke trail)
    ═══════════════════════════════════════════════════════════ */
 function createGhostCursor(canvas, opts = {}) {
-  const TRAIL    = opts.trailLength ?? 28;
-  const INERTIA  = opts.inertia ?? 0.5;
-  const MAX_DPR  = opts.maxDevicePixelRatio ?? 0.45;
-  const BUDGET   = opts.targetPixels ?? 4.2e5;
-  const BRIGHT   = opts.brightness ?? 1.45;
-  const EDGE     = opts.edgeIntensity ?? 0.35;
+  const TRAIL = opts.trailLength ?? 28;
+  const INERTIA = opts.inertia ?? 0.5;
+  const MAX_DPR = opts.maxDevicePixelRatio ?? 0.45;
+  const BUDGET = opts.targetPixels ?? 4.2e5;
+  const BRIGHT = opts.brightness ?? 1.45;
+  const EDGE = opts.edgeIntensity ?? 0.35;
   const FADE_DELAY = opts.fadeDelayMs ?? 900;
-  const FADE_DUR   = opts.fadeDurationMs ?? 1400;
+  const FADE_DUR = opts.fadeDurationMs ?? 1400;
   const rgb = hexToRgb(opts.color ?? '#ff2b2b');
 
   const gl = canvas.getContext('webgl', {
     alpha: true, antialias: false, depth: false, stencil: false,
     premultipliedAlpha: false, powerPreference: 'high-performance'
   });
-  if (!gl) return { resize() {}, move() {}, render() {}, ok: false };
+  if (!gl) return { resize() { }, move() { }, render() { }, ok: false };
 
   const VERT = `
     attribute vec2 aPos;
@@ -209,24 +209,24 @@ function createGhostCursor(canvas, opts = {}) {
   }
   const vs = compile(gl.VERTEX_SHADER, VERT);
   const fs = compile(gl.FRAGMENT_SHADER, FRAG);
-  if (!vs || !fs) return { resize() {}, move() {}, render() {}, ok: false };
+  if (!vs || !fs) return { resize() { }, move() { }, render() { }, ok: false };
 
   const prog = gl.createProgram();
   gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
-  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return { resize() {}, move() {}, render() {}, ok: false };
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return { resize() { }, move() { }, render() { }, ok: false };
   gl.useProgram(prog);
 
   const buf = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
   const aPos = gl.getAttribLocation(prog, 'aPos');
   gl.enableVertexAttribArray(aPos);
   gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
 
   const U = n => gl.getUniformLocation(prog, n);
   const uTime = U('iTime'), uRes = U('iResolution'), uMouse = U('iMouse'),
-        uPrev = U('iPrevMouse[0]'), uOpacity = U('iOpacity'), uScale = U('iScale'),
-        uColor = U('iBaseColor'), uBright = U('iBrightness'), uEdge = U('iEdgeIntensity');
+    uPrev = U('iPrevMouse[0]'), uOpacity = U('iOpacity'), uScale = U('iScale'),
+    uColor = U('iBaseColor'), uBright = U('iBrightness'), uEdge = U('iEdgeIntensity');
 
   gl.uniform3f(uColor, rgb[0], rgb[1], rgb[2]);
   gl.uniform1f(uBright, BRIGHT);
@@ -237,12 +237,12 @@ function createGhostCursor(canvas, opts = {}) {
   gl.clearColor(0, 0, 0, 0);
 
   const trail = new Float32Array(TRAIL * 2).fill(0.5);
-  const flat  = new Float32Array(TRAIL * 2).fill(0.5);
+  const flat = new Float32Array(TRAIL * 2).fill(0.5);
   let head = 0;
 
   const target = { x: 0.5, y: 0.5 };
-  const cur    = { x: 0.5, y: 0.5 };
-  const vel    = { x: 0, y: 0 };
+  const cur = { x: 0.5, y: 0.5 };
+  const vel = { x: 0, y: 0 };
   let pointerActive = false;
   let lastMove = performance.now();
   let fade = 0;
@@ -317,10 +317,10 @@ function hexToRgb(hex) {
 
 /* ═══════════════════ ACT I — scroll scrub ═══════════════════ */
 const scrubSection = document.getElementById('scrub');
-const mainCanvas   = document.getElementById('mainCanvas');
-const scrubGlow    = document.getElementById('scrubGlow');
-const titleblock   = document.getElementById('titleblock');
-const phases       = [...document.querySelectorAll('.phase')];
+const mainCanvas = document.getElementById('mainCanvas');
+const scrubGlow = document.getElementById('scrubGlow');
+const titleblock = document.getElementById('titleblock');
+const phases = [...document.querySelectorAll('.phase')];
 let mainCtx = fitCanvas(mainCanvas);
 
 let frameTarget = 0, frameShown = 0, lastDrawn = -1;
@@ -391,7 +391,7 @@ function drawFeather(ctx, f, w, h, dir, intensity) {
   ctx.beginPath();
   ctx.moveTo(-len, 0);
   ctx.quadraticCurveTo(-len * 0.15, -len * 0.42, len, 0);
-  ctx.quadraticCurveTo(-len * 0.15,  len * 0.42, -len, 0);
+  ctx.quadraticCurveTo(-len * 0.15, len * 0.42, -len, 0);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
@@ -451,9 +451,9 @@ function drawFlame(ctx, f, w, h, t) {
     const r = b.r * 1.28;
     const heat = Math.pow(1 - b.u, 1.6) * 0.9 + 0.06;
     const g = ctx.createRadialGradient(b.x, b.y, r * 0.45, b.x, b.y, r);
-    g.addColorStop(0,    `rgba(214,32,44,${0.42 * heat * near})`);
+    g.addColorStop(0, `rgba(214,32,44,${0.42 * heat * near})`);
     g.addColorStop(0.55, `rgba(126,12,30,${0.2 * heat * near})`);
-    g.addColorStop(1,    'rgba(46,0,14,0)');
+    g.addColorStop(1, 'rgba(46,0,14,0)');
     ctx.fillStyle = g;
     ctx.beginPath();
     ctx.arc(b.x, b.y, r, 0, Math.PI * 2);
@@ -465,9 +465,9 @@ function drawFlame(ctx, f, w, h, t) {
     const b = flameBlob(f, i, BLOBS, w, h, p, tall, wide);
     const a = (0.97 - b.u * 0.42) * near;
     const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
-    g.addColorStop(0,   `rgba(3,2,4,${a})`);
+    g.addColorStop(0, `rgba(3,2,4,${a})`);
     g.addColorStop(0.62, `rgba(6,3,8,${a * 0.8})`);
-    g.addColorStop(1,   'rgba(9,5,11,0)');
+    g.addColorStop(1, 'rgba(9,5,11,0)');
     ctx.fillStyle = g;
     ctx.beginPath();
     ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
@@ -505,17 +505,17 @@ function paintAmaterasu(t) {
 
 /* ═══════════════ ACT II — mouse-tracked eyes ═══════════════ */
 const eyesSection = document.getElementById('eyes');
-const eyeCanvas   = document.getElementById('eyeCanvas');
-const eyeFlare    = document.getElementById('eyeFlare');
-const eyeReadout  = document.getElementById('eyeReadout');
+const eyeCanvas = document.getElementById('eyeCanvas');
+const eyeFlare = document.getElementById('eyeFlare');
+const eyeReadout = document.getElementById('eyeReadout');
 let eyeCtx = fitCanvas(eyeCanvas);
 
 const GAZE_LUT = [
-  { f: 5,  cx: 613.4 },
-  { f: 4,  cx: 622.5 },
-  { f: 3,  cx: 631.3 },
-  { f: 2,  cx: 645.2 },
-  { f: 1,  cx: 652.4 },
+  { f: 5, cx: 613.4 },
+  { f: 4, cx: 622.5 },
+  { f: 3, cx: 631.3 },
+  { f: 2, cx: 645.2 },
+  { f: 1, cx: 652.4 },
   { f: 28, cx: 652.5 },
   { f: 29, cx: 663.4 },
   { f: 30, cx: 671.4 },
@@ -542,8 +542,8 @@ window.addEventListener('touchmove', e => {
 
 /* ═══════════════ ACT III — ghost cursor + reveal + parallax ═══════════════ */
 const jutsuSection = document.getElementById('jutsu');
-const jutsuReveal  = document.getElementById('jutsuReveal');
-const ghostCanvas  = document.getElementById('ghostCanvas');
+const jutsuReveal = document.getElementById('jutsuReveal');
+const ghostCanvas = document.getElementById('ghostCanvas');
 const ghost = createGhostCursor(ghostCanvas, {
   color: '#ff2b2b',
   trailLength: 28,
@@ -642,73 +642,22 @@ function readScroll() {
 /* ═══════════════════════════════════════════════════════════
    STORM — lightning flashes + synthesised thunder
    ═══════════════════════════════════════════════════════════ */
-const STRIKE_GAP   = 500;
+const STRIKE_GAP = 500;
 const STRIKE_EVERY = [3200, 7000];
 
 const stormFlash = document.getElementById('stormFlash');
-const stormBolt  = document.getElementById('stormBolt');
-const boltPath   = document.getElementById('boltPath');
-const boltGlow   = document.getElementById('boltGlow');
+const stormBolt = document.getElementById('stormBolt');
+const boltPath = document.getElementById('boltPath');
+const boltGlow = document.getElementById('boltGlow');
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-let audioCtx = null, thunderOn = false;
-
-function initAudio() {
-  if (audioCtx) return audioCtx;
-  const AC = window.AudioContext || window.webkitAudioContext;
-  if (!AC) return null;
-  audioCtx = new AC();
-  return audioCtx;
-}
+let thunderOn = false;
 
 function playThunder(power = 1) {
   if (!thunderOn) return;
-  const ctx = initAudio();
-  if (!ctx || ctx.state === 'suspended') return;
-
-  const now = ctx.currentTime;
-  const dur = 2.2 + Math.random() * 2.4 * power;
-
-  const frames = Math.floor(ctx.sampleRate * dur);
-  const buf = ctx.createBuffer(1, frames, ctx.sampleRate);
-  const d = buf.getChannelData(0);
-  let last = 0;
-  for (let i = 0; i < frames; i++) {
-    const white = Math.random() * 2 - 1;
-    last = (last + 0.02 * white) / 1.02;
-    d[i] = last * 3.2;
-  }
-  const src = ctx.createBufferSource();
-  src.buffer = buf;
-
-  const lp = ctx.createBiquadFilter();
-  lp.type = 'lowpass';
-  lp.frequency.setValueAtTime(1400 * power, now);
-  lp.frequency.exponentialRampToValueAtTime(90, now + dur);
-
-  const hp = ctx.createBiquadFilter();
-  hp.type = 'highpass'; hp.frequency.value = 28;
-
-  const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0.0001, now);
-  gain.gain.exponentialRampToValueAtTime(0.55 * power, now + 0.04);
-  gain.gain.exponentialRampToValueAtTime(0.16 * power, now + 0.5);
-  gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
-
-  const sub = ctx.createOscillator();
-  sub.type = 'sine';
-  sub.frequency.setValueAtTime(58, now);
-  sub.frequency.exponentialRampToValueAtTime(24, now + dur * 0.8);
-  const subGain = ctx.createGain();
-  subGain.gain.setValueAtTime(0.0001, now);
-  subGain.gain.exponentialRampToValueAtTime(0.32 * power, now + 0.12);
-  subGain.gain.exponentialRampToValueAtTime(0.0001, now + dur * 0.85);
-
-  src.connect(hp); hp.connect(lp); lp.connect(gain); gain.connect(ctx.destination);
-  sub.connect(subGain); subGain.connect(ctx.destination);
-
-  src.start(now); src.stop(now + dur);
-  sub.start(now); sub.stop(now + dur);
+  const audio = new Audio('/assets/audio.wav');
+  audio.volume = Math.min(1, Math.max(0, power));
+  audio.play().catch(e => console.log('Audio play failed:', e));
 }
 
 function makeBolt() {
@@ -782,14 +731,12 @@ function strike() {
 if (!reducedMotion) stormTimer = setTimeout(strike, 1800);
 
 const soundToggle = document.getElementById('soundToggle');
-const soundState  = document.getElementById('soundState');
-soundToggle.addEventListener('click', async () => {
+const soundState = document.getElementById('soundState');
+soundToggle.addEventListener('click', () => {
   thunderOn = !thunderOn;
   soundToggle.setAttribute('aria-pressed', String(thunderOn));
   soundState.textContent = thunderOn ? 'ON' : 'OFF';
   if (thunderOn) {
-    const ctx = initAudio();
-    if (ctx && ctx.state === 'suspended') await ctx.resume();
     playThunder(0.7);
   }
 });
@@ -827,7 +774,7 @@ function setupResumeInteractions() {
             }
           });
           msg.innerHTML = '<span class="glow-green">CORRECT. DATA LEDGER UNLOCKED. +150 XP</span>';
-          
+
           // Animate uchiwa mark spinning & visual card response
           gsap.to('.uchiwa', { rotation: '+=360', duration: 1.5, ease: 'power2.out' });
           gsap.to(card, { scale: 1.02, duration: 0.2, yoyo: true, repeat: 1, ease: 'power1.inOut' });
@@ -845,7 +792,7 @@ function setupResumeInteractions() {
     regumindBtn.addEventListener('click', (e) => {
       e.target.disabled = true;
       e.target.innerHTML = 'Parsing PDFs & generating FAISS vector index...';
-      
+
       gsap.to('.uchiwa', { rotation: '+=360', duration: 1.5, ease: 'power2.out' });
 
       setTimeout(() => {
@@ -917,22 +864,22 @@ function setupResumeInteractions() {
           _subject: `New Signal from ${nameVal} (Portfolio)`
         })
       })
-      .then(res => {
-        if (!res.ok) throw new Error('Transmission interrupted by network collapse.');
-        return res.json();
-      })
-      .then(() => {
-        btn.innerHTML = 'TRANSMISSION ANCHORED!';
-        statusEl.innerHTML = `> Light signal dispatched successfully! Thank you, ${nameVal}. XP +300 logged.`;
-        statusEl.className = 'glow-green';
-        contactForm.reset();
-      })
-      .catch(err => {
-        btn.disabled = false;
-        btn.innerHTML = 'TRANSMIT';
-        statusEl.innerHTML = `> Failed to transmit: ${err.message || 'Signal lost.'}`;
-        statusEl.className = 'glow-magenta';
-      });
+        .then(res => {
+          if (!res.ok) throw new Error('Transmission interrupted by network collapse.');
+          return res.json();
+        })
+        .then(() => {
+          btn.innerHTML = 'TRANSMISSION ANCHORED!';
+          statusEl.innerHTML = `> Light signal dispatched successfully! Thank you, ${nameVal}. XP +300 logged.`;
+          statusEl.className = 'glow-green';
+          contactForm.reset();
+        })
+        .catch(err => {
+          btn.disabled = false;
+          btn.innerHTML = 'TRANSMIT';
+          statusEl.innerHTML = `> Failed to transmit: ${err.message || 'Signal lost.'}`;
+          statusEl.className = 'glow-magenta';
+        });
     });
   }
 }
@@ -940,9 +887,9 @@ function setupResumeInteractions() {
 /* ═════════════════════ resize ═════════════════════ */
 function resizeAll() {
   mainCtx = fitCanvas(mainCanvas);
-  fCtx    = fitCanvas(featherCanvas);
-  eyeCtx  = fitCanvas(eyeCanvas);
-  amaCtx  = fitCanvas(amaCanvas);
+  fCtx = fitCanvas(featherCanvas);
+  eyeCtx = fitCanvas(eyeCanvas);
+  amaCtx = fitCanvas(amaCanvas);
   lastDrawn = -1; eyeLastKey = '';
   seedFeathers();
   seedFlames(); amaPainted = false;
@@ -957,7 +904,7 @@ function tick() {
   readScrub();
 
   if (syncSize(mainCanvas) || syncSize(eyeCanvas) ||
-      syncSize(featherCanvas) || syncSize(amaCanvas)) resizeAll();
+    syncSize(featherCanvas) || syncSize(amaCanvas)) resizeAll();
 
   if (!reduceMotion) paintAmaterasu(performance.now() / 1000);
   else if (!amaPainted) { paintAmaterasu(0); amaPainted = true; }
@@ -982,7 +929,7 @@ function tick() {
       f.x += f.vx * speed;
       f.y += Math.sin(f.sway) * 0.0006 + f.vx * speed * 0.18;
       f.sway += 0.02 + f.vx * 0.01;
-      f.rot  += f.spin * (0.3 + scrollVel);
+      f.rot += f.spin * (0.3 + scrollVel);
       if (f.x > 1.15) f.x = -0.15;
       if (f.x < -0.15) f.x = 1.15;
       if (f.y > 1.15) f.y = -0.15;
@@ -1039,7 +986,7 @@ function tick() {
     const rs = jutsuSection.style;
     rs.setProperty('--rx', (revealX * 100).toFixed(2) + '%');
     rs.setProperty('--ry', (revealY * 100).toFixed(2) + '%');
-    rs.setProperty('--r',  revealR.toFixed(0) + 'px');
+    rs.setProperty('--r', revealR.toFixed(0) + 'px');
     if (ghost.ok && (jutsuLit || revealR > 1)) ghost.render();
   }
 
