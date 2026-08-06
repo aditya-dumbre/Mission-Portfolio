@@ -4,6 +4,7 @@
 
 import './style.css';
 import { gsap } from 'gsap';
+import bgMusicSrc from './assets/audio.wav';
 
 const MAIN_COUNT = 71;
 const EYE_COUNT = 51;
@@ -652,7 +653,7 @@ const boltGlow = document.getElementById('boltGlow');
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 let audioOn = false;
-const bgMusic = new Audio('/assets/audio.wav');
+const bgMusic = new Audio(bgMusicSrc);
 bgMusic.loop = true;
 
 function makeBolt() {
